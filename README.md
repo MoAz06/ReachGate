@@ -8,11 +8,11 @@ Security scanners tell you that a vulnerability exists. ReachGate answers whethe
 
 For each security finding, ReachGate:
 
-1. Queries Orbit for the finding's code location via `VulnerabilityOccurrence.location`
+1. Queries Orbit for the finding's code location from the schema-provided finding fields or edges
 2. Walks the graph (CALLS and IMPORTS edges) from a declared entry point to the vulnerable definition
 3. A deterministic policy engine (transparent rule weights, no model score) returns a verdict:
-   - **REACHABLE** — creates or escalates a work item, bumps severity, attaches the path as a receipt
-   - **NOT_REACHABLE** — deprioritizes, with the evidence (no path from any entry point)
+   - **REACHABLE** - creates or escalates a work item, bumps severity, attaches the path as a receipt
+   - **NOT_REACHABLE** - deprioritizes, with the evidence (no path from any entry point)
 4. Posts an auditable receipt (graph path + triggered rules + score breakdown) as an MR comment or work item
 
 ## Entry points are configurable
@@ -33,7 +33,7 @@ ReachGate never guesses what is reachable from the outside. You declare the boun
 
 ## Architecture
 
-```
+```text
 reachgate.yml
     |
     v
@@ -73,7 +73,7 @@ python -m src.reachgate.agent
 pytest
 ```
 
-18 tests covering the config loader, policy engine verdicts, rule triggers, and the reachable/unreachable flip.
+25 tests covering the config loader, policy engine verdicts, rule triggers, glob matching, and the reachable/unreachable flip.
 
 ## Honest scope
 
