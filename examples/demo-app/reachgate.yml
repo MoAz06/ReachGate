@@ -1,0 +1,12 @@
+# ReachGate config for the demo app.
+# app.py is the only declared entry point.
+
+version: "1"
+
+entrypoints:
+  files:
+    - "app.py"
+
+policy:
+  min_hops: 1
+  max_hops: 10
