@@ -1,0 +1,21 @@
+# ReachGate entry-point configuration.
+# Declare the files that form your application's attack surface.
+# ReachGate walks the code graph from these files toward each security finding.
+# Glob patterns are matched against File.path in GitLab Orbit.
+
+version: "1"
+
+entrypoints:
+  files:
+    - "src/routes/**/*"
+    - "app/controllers/**/*"
+    - "cmd/**/main.*"
+    - "server.ts"
+    - "app.py"
+
+# Optional: tune the reachability verdict thresholds.
+policy:
+  # Minimum graph hops to consider reachable (1 = direct import counts).
+  min_hops: 1
+  # Maximum hops to traverse before declaring not-reachable.
+  max_hops: 10
