@@ -1,0 +1,13 @@
+{
+  "result": {
+    "format_version": "2.1.0",
+    "query_type": "traversal",
+    "nodes": [
+      {"type": "VulnerabilityOccurrence", "id": "3833274437", "severity": "critical", "name": "RSA private key", "uuid": "6fc71787-71f3-570a-89c1-32d70bde0955", "location": "{\"file\": \"vendor/gems/doorkeeper-openid_connect/spec/dummy/config/initializers/doorkeeper_openid_connect.rb\", \"start_line\": 7}"},
+      {"type": "VulnerabilityOccurrence", "id": "6225494635", "severity": "high", "name": "tar-fs symlink validation bypass", "uuid": "e68b1f25-9836-567e-9b80-b4bf06420e97", "location": "{\"file\": \"yarn.lock\", \"dependency\": {\"package\": {\"name\": \"tar-fs\"}, \"version\": \"2.1.3\"}}"}
+    ],
+    "edges": []
+  },
+  "query_type": "traversal",
+  "row_count": 2
+}
