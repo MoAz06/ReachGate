@@ -8,6 +8,7 @@ from typing import Any
 
 from .config import ReachGateConfig
 from .orbit_client import OrbitClient
+from .path_strategy import BoundedBFS, PathStrategy
 
 
 @dataclass
@@ -31,9 +32,15 @@ def extract_file_from_location(location_json: str) -> str | None:
 
 
 class GraphWalker:
-    def __init__(self, client: OrbitClient, config: ReachGateConfig):
+    def __init__(
+        self,
+        client: OrbitClient,
+        config: ReachGateConfig,
+        strategy: PathStrategy | None = None,
+    ):
         self._client = client
         self._config = config
+        self._strategy = strategy or BoundedBFS(client)
 
     def check_reachability(self, occurrence: dict[str, Any]) -> ReachabilityResult:
         location_json = occurrence.get("location", "")
@@ -62,29 +69,17 @@ class GraphWalker:
         vuln_definition: dict[str, Any],
         vuln_file: str,
     ) -> ReachabilityResult:
-        try:
-            response = self._client.find_path(
-                from_entity="File",
-                from_id=entry_file["id"],
-                to_entity="Definition",
-                to_id=vuln_definition["id"],
-                max_hops=self._config.policy.max_hops,
-            )
-        except Exception:
+        path = self._strategy.find_path(
+            entry_file, vuln_definition, self._config.policy.max_hops
+        )
+        if not path:
             return ReachabilityResult(reachable=False)
 
-        path_nodes = response.get("path", [])
-        if not path_nodes:
-            return ReachabilityResult(reachable=False)
-
-        hops = len(path_nodes) - 1
+        hops = len(path) - 1
         if hops < self._config.policy.min_hops:
             return ReachabilityResult(reachable=False)
 
-        path_labels = [
-            f"{n.get('entity')}:{n.get('name') or n.get('path') or n.get('id')}"
-            for n in path_nodes
-        ]
+        path_labels = [f"{n.entity}:{n.label}" for n in path]
 
         return ReachabilityResult(
             reachable=True,
