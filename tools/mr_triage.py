@@ -1,17 +1,21 @@
-"""MR triage demo: run the live engine and post receipts on the merge request.
+"""MR triage: run the live engine and upsert receipts on the merge request.
 
 Runs inside the reachgate-triage CI job on merge request pipelines. Walks the
-live Orbit graph for two real findings on the GitLab docs-site, then posts
-each receipt as an MR comment; the REACHABLE finding also gets a work item.
+live Orbit graph for each finding, then upserts its receipt as an MR comment,
+idempotent by fingerprint: a rerun updates in place instead of duplicating.
+
+This MR flow is comment-only by design -- it never creates work items. Work
+item creation belongs to the agent/catalog flow (actions.handle()), not here.
 
 Required environment (provided by GitLab CI):
     GITLAB_TOKEN              masked CI/CD variable, api scope
-    CI_PROJECT_ID             target project for comments / work items
+    CI_PROJECT_ID             target project for the MR comments
     CI_MERGE_REQUEST_IID      the MR to comment on
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -25,7 +29,8 @@ except Exception:
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from reachgate.actions import GitLabActions, render_receipt, write_artifact  # noqa: E402
-from reachgate.config import PolicyConfig, ReachGateConfig  # noqa: E402
+from reachgate.config import PolicyConfig, ReachGateConfig, load_config  # noqa: E402
+from reachgate.findings import load_findings  # noqa: E402
 from reachgate.graph_walker import GraphWalker  # noqa: E402
 from reachgate.orbit_client import OrbitClient  # noqa: E402
 from reachgate.path_strategy import BoundedBFS  # noqa: E402
@@ -72,7 +77,15 @@ def discover_entrypoints(client: OrbitClient, needle: str) -> list[str]:
     return (preferred or paths)[:MAX_ENTRYPOINTS]
 
 
-def main() -> int:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="ReachGate MR triage")
+    parser.add_argument("--findings", help="Path to a GitLab SAST or native findings JSON")
+    parser.add_argument("--config", help="Path to reachgate.yml (BYO mode)")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
     token = os.environ.get("GITLAB_TOKEN")
     project_id = os.environ.get("GITLAB_PROJECT_ID") or os.environ.get("CI_PROJECT_ID")
     mr_iid_raw = os.environ.get("GITLAB_MR_IID") or os.environ.get("CI_MERGE_REQUEST_IID")
@@ -85,43 +98,50 @@ def main() -> int:
     client = OrbitClient("https://gitlab.com", token)
     actions = GitLabActions("https://gitlab.com", token, project_id)
 
-    # Idempotency: don't re-post receipts when the pipeline reruns on the
-    # same merge request.
-    import httpx
-    notes = httpx.get(
-        f"https://gitlab.com/api/v4/projects/{project_id}/merge_requests/{mr_iid}/notes",
-        headers={"Authorization": f"Bearer {token}"},
-        params={"per_page": 100},
-        timeout=15,
-    ).json()
-    if any("ReachGate Triage Receipt" in (n.get("body") or "") for n in notes):
-        print(f"MR !{mr_iid} already has triage receipts; skipping.")
-        return 0
+    findings_path = args.findings or os.environ.get("REACHGATE_FINDINGS_FILE")
 
-    entrypoints = discover_entrypoints(client, "fetch_versions")
-    if not entrypoints:
-        print("No entry points discovered; aborting without posting.")
-        return 1
-    print(f"Entry points: {entrypoints}")
+    if findings_path:
+        # Bring-your-own findings: load the declared attack surface from real
+        # config (reachgate.yml) instead of the demo discovery, so the
+        # reachability verdict reflects the caller's project, not the demo.
+        findings = load_findings(findings_path)
+        config_path = args.config or os.environ.get("REACHGATE_CONFIG", "reachgate.yml")
+        config = load_config(config_path)
+        print(f"BYO mode: {len(findings)} finding(s) from {findings_path}, "
+              f"config {config_path}")
+    else:
+        # Demo default (Fase 1 proof): hardcoded findings + live discovery.
+        findings = FINDINGS
+        entrypoints = discover_entrypoints(client, "fetch_versions")
+        if not entrypoints:
+            print("No entry points discovered; aborting without posting.")
+            return 1
+        config = ReachGateConfig(
+            version="1",
+            entrypoint_patterns=entrypoints,
+            policy=PolicyConfig(min_hops=1, max_hops=MAX_HOPS),
+        )
+        print(f"Demo mode: entry points {entrypoints}")
 
-    config = ReachGateConfig(
-        version="1",
-        entrypoint_patterns=entrypoints,
-        policy=PolicyConfig(min_hops=1, max_hops=MAX_HOPS),
-    )
     strategy = BoundedBFS(client, max_visited=MAX_VISITED,
                           max_seconds=MAX_SECONDS_PER_WALK)
     walker = GraphWalker(client, config, strategy=strategy)
 
     receipts = []
-    for finding in FINDINGS:
+    for finding in findings:
         result = walker.check_reachability(finding)
         receipt = evaluate(result, finding)
         receipts.append(receipt)
         print(render_receipt(receipt))
-        outcome = actions.handle(receipt, mr_iid=mr_iid)
-        print(f"-> {outcome.get('action')} (MR !{mr_iid})")
+        # MR flow is comment-only and idempotent: upsert the receipt, never
+        # create work items here (that belongs to the agent/catalog flow).
+        res = actions.upsert_mr_receipt(mr_iid, receipt)
+        print(f"-> {res['action']} occ={receipt.occurrence_id} "
+              f"fp={receipt.fingerprint} (MR !{mr_iid})")
+        if res.get("warning"):
+            print(f"   warning: {res['warning']}")
 
+    # Always write the artifact, even when every comment was unchanged.
     artifact_path = write_artifact(receipts)
     print(f"Wrote {artifact_path} ({len(receipts)} receipts)")
 
