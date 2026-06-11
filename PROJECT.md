@@ -81,7 +81,7 @@ reachgate/
 │   ├── hunt_demo_target.py # Helper om demo-targets te vinden
 │   └── smoke_client.py     # Snelle smoke-test van de Orbit-verbinding
 │
-├── tests/                  # 42 tests (pytest + respx fixtures)
+├── tests/                  # 55 tests (pytest + respx fixtures)
 │   ├── fixtures/           # Vastgelegde live Orbit-responses (JSON)
 │   ├── test_config.py
 │   ├── test_graph_walker.py
@@ -235,7 +235,7 @@ De client wrappet de enige query-endpoint van Orbit. Elke query-body wordt gewra
 
 ### `actions.py` - GitLab acties + receipt rendering
 
-**Status: code klaar; live acties (work item aanmaken) nog niet getest tegen het hackathon-project.**
+**Status: werkend, live-getest.** Work items #2-#5 zijn echt aangemaakt (handmatig script, agent-run en CI-pipeline); MR !1 heeft beide receipts als comments. Receipts bevatten sinds 11 juni een Mermaid-paddiagram.
 
 `GitLabActions.handle(receipt, mr_iid)` dispatcht op verdict:
 - `REACHABLE` → `_escalate()`: maakt een GitLab issue aan met labels `reachgate::reachable` en `severity::<severity>`, optioneel een MR-comment.
@@ -426,7 +426,7 @@ De gepubliceerde agent in de GitLab AI Catalog (`AI > Agents > ReachGate`) heeft
 
 ## 9. Testdekking
 
-**42 tests, allemaal groen.** Draaien met:
+**55 tests, allemaal groen** (incl. ImportedSymbol-fallback, import-resolutie en Mermaid-receipt rendering). Draaien met:
 ```bash
 pytest
 ```

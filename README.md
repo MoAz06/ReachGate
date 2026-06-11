@@ -62,6 +62,8 @@ include:
 
 Or copy `.gitlab-ci.yml` from this repo. Set `GITLAB_TOKEN` as a masked CI/CD variable with `api` scope.
 
+Live example: [MR !1](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/1) — the pipeline walked the Orbit graph and posted both verdicts as comments: the SSRF is REACHABLE (escalated to a work item by CI), the path traversal is NOT_REACHABLE. Same scanner severity class, opposite triage outcomes, on one merge request.
+
 ## Architecture
 
 ```text
@@ -91,7 +93,7 @@ GITLAB_TOKEN=<your-token>     # PAT with api scope
 GITLAB_PROJECT_ID=<project>   # your GitLab project ID
 ```
 
-Run:
+Run (from the repository root):
 
 ```bash
 python -m src.reachgate.agent

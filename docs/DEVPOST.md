@@ -58,7 +58,8 @@ We validated everything against the live API on a real indexed project (the GitL
 
 - Repo (GitLab, MIT): https://gitlab.com/gitlab-ai-hackathon/transcend/39037247
 - Mirror (GitHub): https://github.com/MoAz06/ReachGate
-- Live REACHABLE work item with Mermaid receipt: https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/work_items/4
+- Live MR with both verdicts posted by CI (the flip on one MR): https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/1
+- CI-created work item with Mermaid receipt: https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/work_items/5
 - Agent-created work item (live agentic run): https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/work_items/3
 - Demo video: <YOUTUBE_URL_HERE>
 
