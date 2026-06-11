@@ -82,6 +82,19 @@ def main() -> int:
     client = OrbitClient("https://gitlab.com", token)
     actions = GitLabActions("https://gitlab.com", token, project_id)
 
+    # Idempotency: don't re-post receipts when the pipeline reruns on the
+    # same merge request.
+    import httpx
+    notes = httpx.get(
+        f"https://gitlab.com/api/v4/projects/{project_id}/merge_requests/{mr_iid}/notes",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"per_page": 100},
+        timeout=15,
+    ).json()
+    if any("ReachGate Triage Receipt" in (n.get("body") or "") for n in notes):
+        print(f"MR !{mr_iid} already has triage receipts; skipping.")
+        return 0
+
     entrypoints = discover_entrypoints(client, "fetch_versions")
     if not entrypoints:
         print("No entry points discovered; aborting without posting.")
