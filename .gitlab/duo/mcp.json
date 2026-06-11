@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "gitlab-orbit": {
+      "type": "http",
+      "url": "https://gitlab.com/api/v4/orbit/mcp",
+      "approvedTools": [
+        "list_commands",
+        "invoke_command"
+      ]
+    }
+  },
+  "_managed": true
+}
