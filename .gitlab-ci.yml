@@ -1,0 +1,32 @@
+stages:
+  - security-triage
+
+# Runs automatically on every merge request.
+# Requires GITLAB_TOKEN set as a masked CI/CD variable in project settings (api scope).
+reachgate-triage:
+  stage: security-triage
+  image: python:3.11-slim
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  variables:
+    GITLAB_URL: "https://gitlab.com"
+    GITLAB_PROJECT_ID: $CI_PROJECT_ID
+    GITLAB_MR_IID: $CI_MERGE_REQUEST_IID
+  before_script:
+    - pip install --quiet httpx pyyaml
+  script:
+    - python -m src.reachgate.agent
+  allow_failure: true
+
+# Runs the live demo against the GitLab docs-site (publicly indexed in Orbit).
+# Trigger manually or on default branch pushes.
+reachgate-live-demo:
+  stage: security-triage
+  image: python:3.11-slim
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - when: manual
+  before_script:
+    - pip install --quiet httpx pyyaml
+  script:
+    - python tools/demo_e2e.py

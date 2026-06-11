@@ -20,9 +20,13 @@ def run(
     config_path: str = "reachgate.yml",
     severity_filter: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    gitlab_url = gitlab_url or os.environ["GITLAB_URL"]
+    gitlab_url = gitlab_url or os.environ.get("GITLAB_URL", "https://gitlab.com")
     token = token or os.environ["GITLAB_TOKEN"]
-    project_id = project_id or os.environ["GITLAB_PROJECT_ID"]
+    project_id = project_id or os.environ.get("GITLAB_PROJECT_ID") or os.environ.get("CI_PROJECT_ID")
+
+    if mr_iid is None:
+        _raw = os.environ.get("GITLAB_MR_IID") or os.environ.get("CI_MERGE_REQUEST_IID")
+        mr_iid = int(_raw) if _raw else None
 
     config = load_config(config_path)
     client = OrbitClient(gitlab_url, token, project_id)
