@@ -1,0 +1,21 @@
+{
+  "result": {
+    "format_version": "2.1.0",
+    "query_type": "neighbors",
+    "nodes": [
+      {"type": "File", "id": "3514832492658439102", "path": "src/lib/utils.js", "language": "javascript", "name": "utils.js"},
+      {"type": "Definition", "id": "3777659660309476778", "name": "inputs", "start_line": "8", "end_line": "8", "fqn": "cn::inputs@210", "definition_type": "Variable", "file_path": "src/lib/utils.js"},
+      {"type": "Definition", "id": "4044267414631980753", "name": "cn", "fqn": "cn", "definition_type": "Function", "start_line": "8", "end_line": "8", "file_path": "src/lib/utils.js"},
+      {"type": "ImportedSymbol", "id": "6468123718237629549", "import_path": "clsx", "identifier_name": "clsx", "import_type": "NamedImport", "file_path": "src/lib/utils.js"},
+      {"type": "Branch", "id": "764068583672557876", "name": "main", "is_default": "true"}
+    ],
+    "edges": [
+      {"from": "File", "from_id": "3514832492658439102", "to": "Definition", "to_id": "3777659660309476778", "type": "DEFINES"},
+      {"from": "File", "from_id": "3514832492658439102", "to": "Definition", "to_id": "4044267414631980753", "type": "DEFINES"},
+      {"from": "File", "from_id": "3514832492658439102", "to": "ImportedSymbol", "to_id": "6468123718237629549", "type": "IMPORTS"},
+      {"from": "File", "from_id": "3514832492658439102", "to": "Branch", "to_id": "764068583672557876", "type": "ON_BRANCH"}
+    ]
+  },
+  "query_type": "neighbors",
+  "row_count": 4
+}

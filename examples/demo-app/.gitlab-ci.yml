@@ -1,0 +1,8 @@
+stages:
+  - test
+
+include:
+  - template: Jobs/SAST.gitlab-ci.yml
+
+sast:
+  stage: test

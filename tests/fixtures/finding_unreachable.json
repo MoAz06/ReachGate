@@ -1,0 +1,8 @@
+{
+  "id": 1002,
+  "uuid": "bbbb-2222-unreachable",
+  "name": "SQL Injection in legacy_import_tool",
+  "severity": "high",
+  "report_type": "sast",
+  "location": "{\"file\": \"scripts/legacy/import_tool.py\", \"start_line\": 17, \"end_line\": 19}"
+}

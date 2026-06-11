@@ -1,0 +1,8 @@
+{
+  "id": 1001,
+  "uuid": "aaaa-1111-reachable",
+  "name": "SQL Injection in query_builder",
+  "severity": "high",
+  "report_type": "sast",
+  "location": "{\"file\": \"src/db/query_builder.py\", \"start_line\": 42, \"end_line\": 44}"
+}
