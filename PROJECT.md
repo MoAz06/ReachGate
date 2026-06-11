@@ -69,7 +69,8 @@ reachgate/
 │   ├── graph_walker.py     # BFS over de code-graph
 │   ├── path_strategy.py    # BoundedBFS algoritme
 │   ├── policy_engine.py    # Deterministische regelengine + receipt
-│   ├── actions.py          # GitLab work items, MR-comments, receipt-rendering
+│   ├── actions.py          # GitLab work items, idempotente MR-comments, receipt-rendering
+│   ├── findings.py         # GitLab SAST/native JSON findings loader
 │   └── config.py           # reachgate.yml loader + glob matcher
 │
 ├── agent/
@@ -81,18 +82,20 @@ reachgate/
 │   ├── hunt_demo_target.py # Helper om demo-targets te vinden
 │   └── smoke_client.py     # Snelle smoke-test van de Orbit-verbinding
 │
-├── tests/                  # 100 tests (pytest + respx fixtures)
+├── tests/                  # 123 tests (pytest + respx fixtures)
 │   ├── fixtures/           # Vastgelegde live Orbit-responses (JSON)
 │   ├── test_artifact.py
 │   ├── test_certificate.py
 │   ├── test_config.py
+│   ├── test_findings.py
 │   ├── test_graph_walker.py
 │   ├── test_orbit_client.py
 │   ├── test_path_strategy.py
 │   ├── test_policy_engine.py
 │   ├── test_receipt.py
 │   ├── test_search_outcome.py
-│   └── test_unknown_verdict.py
+│   ├── test_unknown_verdict.py
+│   └── test_actions_idempotency.py
 │
 ├── examples/demo-app/      # Voorbeeldapp met eigen reachgate.yml
 ├── reachgate.yml           # Standaard entry-point configuratie
@@ -131,12 +134,18 @@ agent.py  (orchestratie)
     +-- policy_engine.py
     |       - Evalueert 4 vaste regels met gewichten
     |       - risk_score = som van getriggerde gewichten
-    |       - Verdict = REACHABLE als score >= 50, anders NOT_REACHABLE
+    |       - Verdict = REACHABLE / NOT_REACHABLE / UNKNOWN op basis van score en bewijsbasis
     |       - Retourneert PolicyReceipt (auditeerbaar, serialiseerbaar)
     |
+    +-- findings.py
+    |       - Laadt GitLab SAST reports of native JSON naar occurrence-dicts
+    |       - Genereert stabiele uuid fallback voor findings zonder id
+    |       - Dropt findings met ontbrekende location niet stil; engine geeft UNKNOWN
+    |
     +-- actions.py
-            - REACHABLE -> create GitLab issue + optioneel MR-comment
-            - NOT_REACHABLE -> alleen MR-comment (geen escalatie)
+            - Agent/action-flow: REACHABLE -> GitLab issue + optioneel MR-comment
+            - MR-CI-flow: fingerprint-idempotente comment-upsert, geen work items
+            - NOT_REACHABLE/UNKNOWN -> alleen MR-comment (geen escalatie)
             - render_receipt() -> Markdown met verdict, pad, regeluitsplitsing
 ```
 
@@ -230,21 +239,38 @@ De client wrappet de enige query-endpoint van Orbit. Elke query-body wordt gewra
 
 **Drempel:** `REACHABLE_THRESHOLD = 50`
 - Score >= 50 → `REACHABLE`
-- Score < 50 → `NOT_REACHABLE`
+- Score < 50 + exhaustive search → `NOT_REACHABLE`
+- Onvoldoende bewijs → `UNKNOWN` (no location, no definitions, no entry points, bounds hit, API error)
 
 **Logica:** De `path_exists`-regel alleen al haalt de drempel. Dat is bewust: een aantoonbaar pad is de primaire voorwaarde. Zonder pad kan geen enkele andere combinatie de drempel halen.
 
-`PolicyReceipt` bevat: `verdict`, `risk_score`, `triggered_rules`, `path`, `hops`, `entry_point`, `vulnerable_file`, `vulnerable_definition`, `occurrence_id`, `occurrence_name`, `severity`. Heeft een `.as_dict()` methode voor JSON-serialisatie.
+`PolicyReceipt` bevat: `verdict`, `risk_score`, `triggered_rules`, `path`, `hops`, `entry_point`, `vulnerable_file`, `vulnerable_definition`, `occurrence_id`, `occurrence_name`, `severity`, `verdict_basis`, `fingerprint` en `certificate`. Heeft een `.as_dict()` methode voor JSON-serialisatie.
+
+---
+
+### `findings.py` - Findings input normalisatie
+
+**Status: werkend, unit-getest.** Gebouwd voor Fase 2 zodat ReachGate niet alleen hardcoded demo-findings kan verwerken.
+
+`load_findings(path)` en `parse_findings(data)` ondersteunen:
+- GitLab SAST report JSON: `{ "vulnerabilities": [...] }`
+- Native ReachGate JSON: top-level lijst of `{ "findings": [...] }`
+
+Normalisatie-output is dezelfde occurrence-shape die `GraphWalker.check_reachability()` verwacht: `uuid`, `name`, `severity`, `location` als JSON-string en optioneel `start_line`. Als input geen bruikbare `uuid`, `id` of `fingerprint` heeft, genereert `derive_occurrence_id(name, file, start_line)` een stabiele hash. Twee findings in hetzelfde bestand collapsen daardoor niet naar dezelfde identiteit.
+
+Ontbrekende `location` wordt niet stil gedropt: de finding gaat door naar de engine en wordt daar eerlijk `UNKNOWN/no_location`.
 
 ---
 
 ### `actions.py` - GitLab acties + receipt rendering
 
-**Status: werkend, live-getest.** Work items #2-#5 zijn echt aangemaakt (handmatig script, agent-run en CI-pipeline); MR !1 heeft beide receipts als comments. Receipts bevatten sinds 11 juni een Mermaid-paddiagram.
+**Status: werkend, live-getest.** Work items #2-#5 zijn echt aangemaakt (handmatig script, agent-run en vroege CI-demo); MR !1 heeft beide receipts als comments. Fase 2 bewees op MR !3 dat MR-comments fingerprint-idempotent zijn: run 1 `created`, rerun `unchanged`, comment-count 2 -> 2, artifact opnieuw geupload, issue-count 6 -> 6.
 
 `GitLabActions.handle(receipt, mr_iid)` dispatcht op verdict:
 - `REACHABLE` → `_escalate()`: maakt een GitLab issue aan met labels `reachgate::reachable` en `severity::<severity>`, optioneel een MR-comment.
 - `NOT_REACHABLE` → `_deprioritize()`: alleen optioneel MR-comment, geen issue.
+
+Voor MR-CI gebruikt `tools/mr_triage.py` bewust niet `handle()`, maar `upsert_mr_receipt()`: comment-only, keyed op `occurrence_key` + receipt fingerprint. Reruns posten geen duplicate comments en maken geen work items.
 
 `render_receipt(receipt)` genereert de Markdown-output:
 ```
@@ -431,7 +457,7 @@ De gepubliceerde agent in de GitLab AI Catalog (`AI > Agents > ReachGate`) heeft
 
 ## 9. Testdekking
 
-**100 tests, allemaal groen** (incl. ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit). Draaien met:
+**123 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit). Draaien met:
 ```bash
 pytest
 ```
@@ -448,6 +474,8 @@ pytest
 | `test_certificate.py` | Fingerprint-determinisme, gevoeligheid (verdict/severity/policy/surface), globs-hash orde-onafhankelijk |
 | `test_artifact.py` | JSON-artifact schema, serialiseerbaarheid, certificate-render in Markdown, UNKNOWN-render (🟡) |
 | `test_receipt.py` | Mermaid-rendering, node-labels, quote-escaping, plaintext pad |
+| `test_findings.py` | GitLab SAST/native JSON input, location-normalisatie, deterministische uuid-fallback, no-location behoud |
+| `test_actions_idempotency.py` | MR note pagination, marker parsing, created/updated/unchanged upsert, duplicate-key warning, no dynamic metrics in marker |
 
 **Fixtures** in `tests/fixtures/`:
 - `orbit_neighbors_*.json` - live-captured neighbors-responses
@@ -502,14 +530,16 @@ ReachGate is zo goed als zijn `reachgate.yml`. Een onvolledige declaratie van en
 
 ### Verplicht voor inzending (voor 24 juni 14:00 ET)
 
-- [x] **README.md bijgewerkt** (10 juni) - 42 tests, pathfinding-claim verwijderd, CI/CD + live demo + skill secties toegevoegd.
+- [x] **README.md bijgewerkt** (11 juni) - 123 tests, Fase 1/2 live proof, CI/CD + live demo + skill secties toegevoegd.
 - [x] **Live acties getest** (10 juni) - work item #2 via `tools/test_actions.py`; work item #3 via de live agent-run.
-- [x] **CI/CD pipeline** (10 juni) - `.gitlab-ci.yml`, pipeline #2593815452 groen.
+- [x] **CI/CD pipeline** (11 juni) - `.gitlab-ci.yml`, MR !1/!2/!3 live proof groen.
+- [x] **Fase 2 MR-idempotency live bewezen** (11 juni) - MR !3: run 1 `created`, rerun `unchanged`, comment-count 2 -> 2, artifact opnieuw geupload, issue-count 6 -> 6.
+- [x] **Fase 2 proof assets opgeslagen** - screenshots in `docs/img/mr3-*.png`, artifact snapshot in `docs/proof/mr3-reachgate-receipts-rerun.json`.
 - [x] **Agentic E2E werkend** (11 juni) - Orbit MCP in VS Code + skill + agent, zie sectie 10.
 - [ ] **Demo-video opnemen** (<= 3 minuten) - NIEUW SCRIPT: open met de live agentic run in VS Code (agent voert Orbit-queries uit, maakt work item aan), daarna de Python-run (`tools/demo_e2e.py`) met de REACHABLE/NOT_REACHABLE flip, sluit af met CI-pipeline + work items.
 - [ ] **Devpost-inzending** tekst schrijven en indienen op https://gitlab-transcend.devpost.com/
 - [ ] **`reachgate-test` en `schema-probe` agents verwijderen** uit de AI Catalog voor de inzending (throwaway-testobjecten).
-- [ ] **GitHub repo bijwerken** - pushen van de huidige staat naar https://github.com/MoAz06/reachgate (gebruiker pusht zelf).
+- [x] **GitHub repo bijgewerkt** - `origin/main` en `gitlab/main` synced op Fase 2 proof.
 
 ### Optioneel / nice-to-have
 

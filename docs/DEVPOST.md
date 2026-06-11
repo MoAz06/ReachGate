@@ -24,14 +24,14 @@ ReachGate answers that question with evidence. GitLab Orbit indexes the codebase
 
 The verdict is deterministic: `risk_score = sum of fixed rule weights` (path exists +50, direct import +20, high severity +15, medium +8; threshold 50). The model never decides — it only executes the steps and explains the receipt.
 
-Every receipt carries a collapsible **reachability certificate** — policy version hash, search bounds, nodes visited, API calls, evidence modes, and whether any bound cut the walk short — plus a stable **fingerprint** computed only from the finding identity, verdict, path, policy version, and declared attack surface (never timing or call counts), so verdicts are replayable and receipts can be deduplicated by fingerprint. The CI job uploads `reachgate-receipts.json` with every receipt and full certificate as a pipeline artifact.
+Every receipt carries a collapsible **reachability certificate** — policy version hash, search bounds, nodes visited, API calls, evidence modes, and whether any bound cut the walk short — plus a stable **fingerprint** computed only from the finding identity, verdict, path, policy version, and declared attack surface (never timing or call counts). The MR CI job uses that fingerprint to upsert comments: reruns skip unchanged receipts instead of posting duplicates, while still uploading `reachgate-receipts.json` with every receipt and full certificate as a pipeline artifact.
 
 ### How we built it
 
 Three integrated layers, all running on live Orbit data:
 
-1. **Python engine** (`src/reachgate/`) — Orbit REST client, bounded BFS over `neighbors` queries with termination reporting (why each walk stopped), deterministic policy engine with three verdicts, reachability certificates, GitLab actions (work items, MR comments, JSON artifact). 100 tests.
-2. **CI/CD integration** — `.gitlab-ci.yml` runs triage on every merge request and posts the receipt automatically.
+1. **Python engine** (`src/reachgate/`) — Orbit REST client, bounded BFS over `neighbors` queries with termination reporting (why each walk stopped), deterministic policy engine with three verdicts, reachability certificates, GitLab actions (work items, MR comments, JSON artifact). 123 tests.
+2. **CI/CD integration** — `.gitlab-ci.yml` runs triage on every merge request, can load findings from a GitLab SAST report or native JSON, and posts fingerprint-idempotent receipt comments.
 3. **Agentic mode** — a ReachGate agent published in the GitLab AI Catalog, an Agent Skill (`/reachgate` slash command), and the Orbit MCP server wired into VS Code Duo Chat. The agent executes real `query_graph` calls, walks the graph live, applies the same fixed rules, and creates the work item itself.
 
 ### What we discovered about Orbit
@@ -44,11 +44,14 @@ Building this surfaced Orbit behavior that is not in the docs:
 
 We validated everything against the live API on a real indexed project (the GitLab docs-site) with real SAST findings: an SSRF flagged `REACHABLE` (score 85, 1 hop from an entry point) and a path traversal flagged `NOT_REACHABLE` (score 8, frontier exhausted from every declared entry point — verified with a preflight tool before we let the engine claim it). Same scanner severity class, opposite triage outcomes — that flip is the whole point.
 
+We also live-tested the MR workflow on MR !3: the first pipeline created two ReachGate receipt comments, the rerun logged `unchanged` for both fingerprints, the comment count stayed 2, `reachgate-receipts.json` uploaded again, and the issue count stayed unchanged. That proves the MR flow is not a one-shot demo or a comment spammer.
+
 ### Design choices
 
 - **You declare the attack surface.** `reachgate.yml` entry-point globs are the source of truth. ReachGate never guesses what is externally reachable; an incomplete declaration produces false negatives by design.
 - **Receipts, not scores.** Every verdict ships with the graph path (visual Mermaid diagram + plaintext for audit), the triggered rules, their fixed weights, and a reachability certificate documenting how the search ran.
 - **NOT_REACHABLE must be earned.** It is only claimed after an exhaustive walk (frontier empty, no bounds hit, no API errors). Anything less is `UNKNOWN` with the exact reason.
+- **MR comments are idempotent.** The CI path is comment-only and keyed by stable receipt fingerprints, so rerunning the same pipeline does not duplicate reviewer noise. Work-item creation remains in the agent/action escalation path.
 - **Three-step install.** Copy the CI job, set one token, declare entry points. Agentic mode: open the repo in VS Code, approve the preconfigured MCP server, type `/reachgate`.
 
 ### What's next
@@ -63,6 +66,9 @@ We validated everything against the live API on a real indexed project (the GitL
 - Repo (GitLab, MIT): https://gitlab.com/gitlab-ai-hackathon/transcend/39037247
 - Mirror (GitHub): https://github.com/MoAz06/ReachGate
 - Live MR with both verdicts posted by CI (the flip on one MR): https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/1
+- Live MR proving idempotent MR triage reruns: https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3
+- MR !3 proof screenshots: `docs/img/mr3-overview-pipeline-passed.png`, `docs/img/mr3-pipelines-two-passed-runs.png`, `docs/img/mr3-job-unchanged-ssrf-log.png`, `docs/img/mr3-job-unchanged-pathtraversal-artifact-log.png`
+- MR !3 receipt artifact snapshot: `docs/proof/mr3-reachgate-receipts-rerun.json`
 - CI-created work item with Mermaid receipt: https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/work_items/5
 - Agent-created work item (live agentic run): https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/work_items/3
 - Demo video: <YOUTUBE_URL_HERE>

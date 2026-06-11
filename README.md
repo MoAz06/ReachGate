@@ -53,7 +53,7 @@ ReachGate never guesses what is reachable from the outside. You declare the boun
 
 A verdict without a record of how the search ran is just an assertion. Each receipt ships with a collapsible **reachability certificate**: the policy version (a hash of the rule weights and threshold), the search bounds (`max_hops`, `max_visited`, `max_seconds`), how many entry points were checked, how many nodes were visited, how many Orbit API calls it cost, which evidence modes produced the verdict (graph edges or `ImportedSymbol` fallback), and whether any bound cut the walk short.
 
-Each receipt also carries a stable **fingerprint** — a hash over the finding identity, verdict, path, policy version, and declared attack surface (never timing or call counts). The same finding under the same policy always fingerprints identically. This is the foundation for fingerprint-based deduplication of comments and work items (planned next); today the CI job skips reruns with a simpler receipt-presence check.
+Each receipt also carries a stable **fingerprint** — a hash over the finding identity, verdict, path, policy version, and declared attack surface (never timing or call counts). The same finding under the same policy always fingerprints identically. MR triage uses that fingerprint with a hidden per-finding marker to upsert comments: reruns skip unchanged receipts instead of posting duplicates, and changed receipts update in place. Work-item creation remains part of the agent/action escalation flow; the MR CI path is comment-only by design.
 
 The CI job additionally uploads `reachgate-receipts.json`: a machine-readable artifact with every receipt, full certificate, and the active policy, so verdicts can be diffed, audited, and replayed outside GitLab.
 
@@ -71,7 +71,17 @@ include:
 
 Or copy `.gitlab-ci.yml` from this repo. Set `GITLAB_TOKEN` as a masked CI/CD variable with `api` scope.
 
-Live example: [MR !1](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/1) — the pipeline walked the Orbit graph and posted both verdicts as comments: the SSRF is REACHABLE (escalated to a work item by CI), the path traversal is NOT_REACHABLE. Same scanner severity class, opposite triage outcomes, on one merge request.
+By default the CI demo uses the two live GitLab docs-site findings below. For a project-owned run, point the job at a GitLab SAST report or native findings JSON with `REACHGATE_FINDINGS_FILE`; in that mode ReachGate loads the attack surface from `reachgate.yml` (or `REACHGATE_CONFIG`) instead of the demo entry-point discovery.
+
+Live examples:
+
+- [MR !1](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/1) — the pipeline walked the Orbit graph and posted both verdicts as comments: the SSRF is REACHABLE (escalated to a work item in the original demo flow), the path traversal is NOT_REACHABLE. Same scanner severity class, opposite triage outcomes, on one merge request.
+- [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) — live proof that MR triage is fingerprint-idempotent. The first run created two receipt comments; the rerun logged `unchanged` for both fingerprints, kept the comment count at 2, uploaded `reachgate-receipts.json` again, and created no work items from the MR flow.
+
+Proof assets for MR !3:
+
+- Screenshots: `docs/img/mr3-overview-pipeline-passed.png`, `docs/img/mr3-pipelines-two-passed-runs.png`, `docs/img/mr3-job-unchanged-ssrf-log.png`, `docs/img/mr3-job-unchanged-pathtraversal-artifact-log.png`
+- Artifact snapshot: `docs/proof/mr3-reachgate-receipts-rerun.json`
 
 ## Architecture
 
@@ -139,7 +149,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, appl
 pytest
 ```
 
-100 tests covering config loading, policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, the JSON artifact, and the reachable/unreachable flip.
+123 tests covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, and the reachable/unreachable flip.
 
 ## What we learned about Orbit
 
