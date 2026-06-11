@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -11,6 +13,65 @@ import httpx
 from .policy_engine import POLICY_VERSION, REACHABLE_THRESHOLD, PolicyReceipt, Verdict, _RULES
 
 ARTIFACT_SCHEMA_VERSION = "1.0"
+MARKER_VERSION = "v1"
+
+# Hidden HTML-comment marker appended to each MR receipt. Carries ONLY the
+# stable occurrence_key and the content fingerprint -- never any dynamic
+# certificate metric -- so reruns can match and upsert deterministically.
+_MARKER_RE = re.compile(
+    r"<!--\s*reachgate:receipt:v1\s+"
+    r"occurrence_key=(?P<occurrence_key>\S+)\s+"
+    r"fingerprint=(?P<fingerprint>\S+)\s*-->"
+)
+
+
+def occurrence_key(receipt: PolicyReceipt) -> str:
+    """Stable identity for a finding, independent of verdict/severity/path.
+
+    Primary: sha256(occurrence_id). findings.py guarantees a non-empty
+    occurrence_id, so this is the live path. If it is somehow empty, fall
+    back to fields that exist on PolicyReceipt (name + vulnerable_file);
+    if those are empty too, fail loudly rather than collapse identities.
+    """
+    occ_id = receipt.occurrence_id
+    if occ_id:
+        return hashlib.sha256(occ_id.encode()).hexdigest()[:16]
+    name = receipt.occurrence_name or ""
+    vuln_file = receipt.vulnerable_file or ""
+    if not name and not vuln_file:
+        raise ValueError("cannot derive occurrence_key: no id, name or file")
+    canonical = f"{name}|{vuln_file}"
+    return hashlib.sha256(canonical.encode()).hexdigest()[:16]
+
+
+def build_marker(receipt: PolicyReceipt) -> str:
+    return (
+        f"<!-- reachgate:receipt:{MARKER_VERSION} "
+        f"occurrence_key={occurrence_key(receipt)} "
+        f"fingerprint={receipt.fingerprint} -->"
+    )
+
+
+def parse_marker(body: str) -> dict[str, str] | None:
+    """Extract {occurrence_key, fingerprint} from a note body, or None."""
+    if not body:
+        return None
+    m = _MARKER_RE.search(body)
+    if not m:
+        return None
+    return {
+        "occurrence_key": m.group("occurrence_key"),
+        "fingerprint": m.group("fingerprint"),
+    }
+
+
+def render_mr_receipt(receipt: PolicyReceipt) -> str:
+    """The Markdown receipt plus the hidden idempotency marker.
+
+    render_receipt() is left untouched; the marker only exists in the MR
+    wrapper so existing receipt tests are unaffected.
+    """
+    return f"{render_receipt(receipt)}\n\n{build_marker(receipt)}"
 
 
 class GitLabActions:
@@ -28,6 +89,83 @@ class GitLabActions:
         )
         resp.raise_for_status()
         return resp.json()
+
+    def _get(self, path: str, params: dict[str, Any] | None = None) -> httpx.Response:
+        # Returns the Response (not .json()) so callers can read pagination
+        # headers like X-Next-Page.
+        resp = httpx.get(
+            f"{self._base}{path}",
+            headers=self._headers,
+            params=params,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp
+
+    def _put(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        resp = httpx.put(
+            f"{self._base}{path}",
+            headers=self._headers,
+            json=body,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def list_mr_notes(self, mr_iid: int) -> list[dict[str, Any]]:
+        """All notes on an MR, following X-Next-Page pagination."""
+        path = f"/api/v4/projects/{self._project_id}/merge_requests/{mr_iid}/notes"
+        notes: list[dict[str, Any]] = []
+        page = "1"
+        while page:
+            resp = self._get(path, params={"per_page": 100, "page": page})
+            notes.extend(resp.json())
+            page = resp.headers.get("X-Next-Page", "")
+        return notes
+
+    def upsert_mr_receipt(
+        self, mr_iid: int, receipt: PolicyReceipt
+    ) -> dict[str, Any]:
+        """Create, update, or skip an MR receipt comment, keyed by the stable
+        occurrence_key in the hidden marker. Idempotent across reruns:
+        unchanged fingerprint -> no write; changed fingerprint -> update in
+        place; multiple matches -> update the newest and warn (never delete).
+        """
+        key = occurrence_key(receipt)
+        fp = receipt.fingerprint
+        body = render_mr_receipt(receipt)
+        notes_path = f"/api/v4/projects/{self._project_id}/merge_requests/{mr_iid}/notes"
+
+        # Index existing notes by occurrence_key -> [notes] (keep duplicates).
+        index: dict[str, list[dict[str, Any]]] = {}
+        for note in self.list_mr_notes(mr_iid):
+            marker = parse_marker(note.get("body") or "")
+            if marker:
+                index.setdefault(marker["occurrence_key"], []).append(note)
+
+        matches = index.get(key, [])
+        if not matches:
+            created = self._post(notes_path, {"body": body})
+            return {"action": "created", "occurrence_key": key,
+                    "note_id": created.get("id")}
+
+        # Newest match wins (highest note id).
+        newest = max(matches, key=lambda n: n.get("id", 0))
+        result: dict[str, Any] = {"occurrence_key": key, "note_id": newest.get("id")}
+        if len(matches) > 1:
+            result["warning"] = (
+                f"{len(matches)} notes share occurrence_key {key}; "
+                f"updated newest note {newest.get('id')}"
+            )
+
+        existing_marker = parse_marker(newest.get("body") or "")
+        if existing_marker and existing_marker["fingerprint"] == fp:
+            result["action"] = "unchanged"
+            return result
+
+        self._put(f"{notes_path}/{newest['id']}", {"body": body})
+        result["action"] = "updated"
+        return result
 
     def handle(self, receipt: PolicyReceipt, mr_iid: int | None = None) -> dict[str, Any]:
         if receipt.verdict == Verdict.REACHABLE:
