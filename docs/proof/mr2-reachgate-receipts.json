@@ -1,0 +1,134 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-06-11T15:11:26.438566+00:00",
+  "policy": {
+    "version": "8eae9f21a3e6",
+    "threshold": 50,
+    "rules": [
+      {
+        "name": "path_exists",
+        "weight": 50
+      },
+      {
+        "name": "direct_import",
+        "weight": 20
+      },
+      {
+        "name": "high_severity",
+        "weight": 15
+      },
+      {
+        "name": "medium_severity",
+        "weight": 8
+      }
+    ]
+  },
+  "findings": [
+    {
+      "verdict": "REACHABLE",
+      "verdict_basis": "path_found",
+      "risk_score": 85,
+      "risk_breakdown": [
+        {
+          "rule": "path_exists",
+          "weight": 50,
+          "reason": "A graph path exists from a declared entry point to the vulnerable definition."
+        },
+        {
+          "rule": "direct_import",
+          "weight": 20,
+          "reason": "Vulnerable code is directly or nearly directly imported (<=2 hops)."
+        },
+        {
+          "rule": "high_severity",
+          "weight": 15,
+          "reason": "Finding severity is critical or high."
+        }
+      ],
+      "path": [
+        "File:content/frontend/404/archives_redirect.js",
+        "Definition:getArchivesVersions"
+      ],
+      "hops": 1,
+      "entry_point": "content/frontend/404/archives_redirect.js",
+      "vulnerable_file": "content/frontend/services/fetch_versions.js",
+      "vulnerable_definition": "getArchivesVersions",
+      "occurrence_id": "demo-ssrf",
+      "occurrence_name": "Server-side request forgery (SSRF)",
+      "severity": "high",
+      "fingerprint": "8c2aeb6e2457adc7",
+      "certificate": {
+        "strategy": "bounded-bfs-v1",
+        "policy_version": "8eae9f21a3e6",
+        "bounds": {
+          "max_hops": 6,
+          "max_visited": 40,
+          "max_seconds": 120
+        },
+        "entrypoints_checked": 2,
+        "target_definitions_found": 27,
+        "nodes_visited": 2,
+        "max_hops_hit": false,
+        "visited_cap_hit": false,
+        "timeout_hit": false,
+        "frontier_exhausted": false,
+        "api_errors": 0,
+        "orbit_api_calls": 4,
+        "cache_hits": 0,
+        "strategies_attempted": [
+          "graph_edges"
+        ],
+        "evidence_modes": [
+          "graph_edges"
+        ],
+        "entrypoint_globs_hash": "a708d332399a"
+      }
+    },
+    {
+      "verdict": "NOT_REACHABLE",
+      "verdict_basis": "no_path_search_exhaustive",
+      "risk_score": 8,
+      "risk_breakdown": [
+        {
+          "rule": "medium_severity",
+          "weight": 8,
+          "reason": "Finding severity is medium."
+        }
+      ],
+      "path": [],
+      "hops": 0,
+      "entry_point": null,
+      "vulnerable_file": "scripts/create_issues.js",
+      "vulnerable_definition": null,
+      "occurrence_id": "demo-pathtraversal",
+      "occurrence_name": "Improper limitation of a pathname ('Path Traversal')",
+      "severity": "medium",
+      "fingerprint": "d457ba33eef89e2e",
+      "certificate": {
+        "strategy": "bounded-bfs-v1",
+        "policy_version": "8eae9f21a3e6",
+        "bounds": {
+          "max_hops": 6,
+          "max_visited": 40,
+          "max_seconds": 120
+        },
+        "entrypoints_checked": 2,
+        "target_definitions_found": 30,
+        "nodes_visited": 23,
+        "max_hops_hit": false,
+        "visited_cap_hit": false,
+        "timeout_hit": false,
+        "frontier_exhausted": true,
+        "api_errors": 0,
+        "orbit_api_calls": 27,
+        "cache_hits": 1,
+        "strategies_attempted": [
+          "graph_edges",
+          "imported_symbol"
+        ],
+        "evidence_modes": [],
+        "entrypoint_globs_hash": "a708d332399a"
+      }
+    }
+  ]
+}
