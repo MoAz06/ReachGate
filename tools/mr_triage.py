@@ -24,7 +24,7 @@ except Exception:
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from reachgate.actions import GitLabActions, render_receipt  # noqa: E402
+from reachgate.actions import GitLabActions, render_receipt, write_artifact  # noqa: E402
 from reachgate.config import PolicyConfig, ReachGateConfig  # noqa: E402
 from reachgate.graph_walker import GraphWalker  # noqa: E402
 from reachgate.orbit_client import OrbitClient  # noqa: E402
@@ -47,10 +47,13 @@ FINDINGS = [
 ]
 
 # Each visited node is one HTTPS round-trip; keep MR pipelines fast.
+# MAX_HOPS=6: preflight (tools/preflight_bounds.py) showed both demo walks
+# exhaust their frontier by hop 5, so the no-path verdict is exhaustive
+# (honest NOT_REACHABLE) instead of bounds-limited (UNKNOWN).
 MAX_ENTRYPOINTS = 2
 MAX_VISITED = 40
-MAX_SECONDS_PER_WALK = 60
-MAX_HOPS = 4
+MAX_SECONDS_PER_WALK = 120  # per-walk; live runs measured ~30s/walk, 2x margin
+MAX_HOPS = 6
 
 
 def discover_entrypoints(client: OrbitClient, needle: str) -> list[str]:
@@ -110,12 +113,17 @@ def main() -> int:
                           max_seconds=MAX_SECONDS_PER_WALK)
     walker = GraphWalker(client, config, strategy=strategy)
 
+    receipts = []
     for finding in FINDINGS:
         result = walker.check_reachability(finding)
         receipt = evaluate(result, finding)
+        receipts.append(receipt)
         print(render_receipt(receipt))
         outcome = actions.handle(receipt, mr_iid=mr_iid)
         print(f"-> {outcome.get('action')} (MR !{mr_iid})")
+
+    artifact_path = write_artifact(receipts)
+    print(f"Wrote {artifact_path} ({len(receipts)} receipts)")
 
     print(f"[timing] total {time.perf_counter() - t0:.1f}s")
     return 0

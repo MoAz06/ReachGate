@@ -51,10 +51,12 @@ UNREACHABLE_FINDING = {
 }
 
 # Keep the live demo fast: each visited node costs one HTTPS round-trip.
+# MAX_HOPS=6: preflight showed both demo walks exhaust their frontier by
+# hop 5, so no-path means exhaustive NOT_REACHABLE rather than UNKNOWN.
 MAX_ENTRYPOINTS = 2
 MAX_VISITED = 40
-MAX_SECONDS_PER_WALK = 60
-MAX_HOPS = 4
+MAX_SECONDS_PER_WALK = 120  # per-walk; live runs measured ~30s/walk, 2x margin
+MAX_HOPS = 6
 
 
 class TimedOrbitClient(OrbitClient):
