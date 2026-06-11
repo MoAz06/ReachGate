@@ -15,7 +15,7 @@ reachgate-triage:
   before_script:
     - pip install --quiet httpx pyyaml
   script:
-    - python -m src.reachgate.agent
+    - python tools/mr_triage.py
   allow_failure: true
 
 # Runs the live demo against the GitLab docs-site (publicly indexed in Orbit).
