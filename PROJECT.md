@@ -448,13 +448,31 @@ pytest
 
 ## 10. Bekende beperkingen en beslissingen
 
-### Agent runtime beperking (OPGELOST, niet meer onderzoeken)
+### Agent runtime beperking (OPGELOST via MCP, 11 juni 2026)
 
-Noch de web Duo Chat, noch de VS Code GitLab Workflow extension (v6.83) voert de Orbit-tools van de custom agent daadwerkelijk uit:
-- **Web Duo Chat** in het project toont nep `<tool_use>` tekst maar maakt nooit een agent-sessie aan.
-- **VS Code extension** koppelt wel aan project 39037247 (via git remote) maar heeft alleen generieke GitLab-tools (read file, grep, MRs) - geen Orbit-tools.
+De native Orbit-tools van de custom agent werken nergens (web Duo Chat noch VS Code extension voert ze uit). **Doorbraak: de Orbit MCP server in VS Code lost dit volledig op.**
 
-**Beslissing (definitief):** De Python-engine in `src/reachgate/` is de canonieke implementatie die reachability echt berekent op live Orbit-data. De gepubliceerde agent is het Stage-1 AI Catalog artifact (satisfies het "publish to AI Catalog" vereiste). De inzending is eerlijk over dit onderscheid.
+**Werkende setup (live geverifieerd 11 juni 2026):**
+- `C:\Users\moham\AppData\Roaming\GitLab\duo\mcp.json` (user-level) en `.gitlab/duo/mcp.json` (repo) bevatten:
+  ```json
+  {
+    "mcpServers": {
+      "gitlab-orbit": {
+        "type": "http",
+        "url": "https://gitlab.com/api/v4/orbit/mcp"
+      }
+    }
+  }
+  ```
+  Het `"type": "http"` veld is **verplicht** - zonder dit veld geeft de MCP Dashboard "Invalid configuration".
+- MCP Dashboard ("GitLab: Show MCP Dashboard") toont status **connected**, transport http, 2 tools: `list_commands` en `invoke_command` (wrapper; `query_graph` en `get_graph_schema` zitten als commands binnen `invoke_command`).
+- Tools pre-approved via de dashboard (staat nu in `.gitlab/duo/mcp.json` als `approvedTools`).
+
+**Live agent-run bewijs (11 juni 2026):** Duo Chat agentic mode in VS Code laadde de `/reachgate` skill, voerde echte Orbit-queries uit via `invoke_command` (query_graph), corrigeerde zelf DSL-fouten via `get_query_dsl`, vond de link via een `ImportedSymbol` node (zie hieronder), produceerde het exacte receipt (REACHABLE, score 85), en maakte work item #3 aan in het hackathon-project. Volledige agentic E2E-flow werkt.
+
+**Belangrijke graafvondst:** voor de docs-site (JavaScript) heeft Orbit **geen IMPORTS/CALLS edges** tussen de relevante nodes; de import-relatie zit in `ImportedSymbol` nodes (`file_path`, `identifier_name`, `import_path`, `import_type=NamedImport`). SKILL.md heeft nu een fallback-stap die dit beschrijft. De Python-engine vond eerder wel een pad via neighbors - beide bewijsroutes zijn geldig.
+
+**Beslissing:** De Python-engine blijft de canonieke deterministische implementatie (CI/CD, batch). De agent + skill + Orbit MCP is de live agentic demo-route. Beide draaien op echte Orbit-data.
 
 ### Demo-project indexering
 
@@ -474,11 +492,14 @@ ReachGate is zo goed als zijn `reachgate.yml`. Een onvolledige declaratie van en
 
 ### Verplicht voor inzending (voor 24 juni 14:00 ET)
 
-- [ ] **README.md bijwerken** - eerlijk over de scope: Python-engine draait echt, agent is catalog artifact. Huidige README klopt niet (zegt "25 tests" terwijl er 42 zijn; noemt pathfinding query die niet bestaat).
-- [ ] **Demo-video opnemen** (<= 3 minuten) - beginnen met de live Python-run (`tools/demo_e2e.py`), daarna de agent tonen in de catalog. Toon de flip: Finding A REACHABLE (work item aangemaakt), Finding B NOT_REACHABLE (bewijs zonder pad).
+- [x] **README.md bijgewerkt** (10 juni) - 42 tests, pathfinding-claim verwijderd, CI/CD + live demo + skill secties toegevoegd.
+- [x] **Live acties getest** (10 juni) - work item #2 via `tools/test_actions.py`; work item #3 via de live agent-run.
+- [x] **CI/CD pipeline** (10 juni) - `.gitlab-ci.yml`, pipeline #2593815452 groen.
+- [x] **Agentic E2E werkend** (11 juni) - Orbit MCP in VS Code + skill + agent, zie sectie 10.
+- [ ] **Demo-video opnemen** (<= 3 minuten) - NIEUW SCRIPT: open met de live agentic run in VS Code (agent voert Orbit-queries uit, maakt work item aan), daarna de Python-run (`tools/demo_e2e.py`) met de REACHABLE/NOT_REACHABLE flip, sluit af met CI-pipeline + work items.
 - [ ] **Devpost-inzending** tekst schrijven en indienen op https://gitlab-transcend.devpost.com/
-- [ ] **`reachgate-test` agent verwijderen** uit de AI Catalog voor de inzending (is een throwaway-testobject).
-- [ ] **GitHub repo bijwerken** - pushen van de huidige staat naar https://github.com/MoAz06/reachgate
+- [ ] **`reachgate-test` en `schema-probe` agents verwijderen** uit de AI Catalog voor de inzending (throwaway-testobjecten).
+- [ ] **GitHub repo bijwerken** - pushen van de huidige staat naar https://github.com/MoAz06/reachgate (gebruiker pusht zelf).
 
 ### Optioneel / nice-to-have
 
