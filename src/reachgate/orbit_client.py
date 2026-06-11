@@ -31,6 +31,8 @@ class OrbitClient:
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
+        # Counted for the reachability certificate (audit metadata).
+        self.api_calls = 0
 
     # --- Low-level ---
 
@@ -38,6 +40,7 @@ class OrbitClient:
         """Run a query and return the raw {"result": {...}, "row_count": N} body."""
         url = f"{self._base}/api/v4/orbit/query"
         body = {"query": inner, "format": "raw"}
+        self.api_calls += 1
         resp = httpx.post(url, headers=self._headers, json=body, timeout=30)
         resp.raise_for_status()
         return resp.json()
@@ -121,13 +124,19 @@ class OrbitClient:
         Some languages (notably JavaScript) are indexed with import
         relationships as ImportedSymbol nodes rather than IMPORTS/CALLS
         edges; these are first-class reachability evidence.
+
+        Columns must be named explicitly: the API rejects ["*"] with a
+        400 compile_error (verified live against schema_version 0.1).
         """
         return self.query_nodes({
             "query_type": "traversal",
             "node": {
                 "id": "imp",
                 "entity": "ImportedSymbol",
-                "columns": ["*"],
+                "columns": [
+                    "id", "file_path", "import_type", "import_path",
+                    "identifier_name", "identifier_alias",
+                ],
                 "filters": {"file_path": {"op": "eq", "value": file_path}},
             },
             "limit": 200,

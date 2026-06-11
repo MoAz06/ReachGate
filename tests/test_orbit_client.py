@@ -89,6 +89,23 @@ def test_get_file_by_path_returns_first_or_none():
 
 
 @respx.mock
+def test_get_imported_symbols_names_columns_explicitly():
+    # The live API rejects columns=["*"] with a 400 compile_error; the
+    # query must name real ImportedSymbol columns (regression for the
+    # bug where every fallback call failed and flipped verdicts UNKNOWN).
+    route = respx.post(QUERY_URL).mock(
+        return_value=httpx.Response(200, json={"result": {"nodes": [], "edges": []}, "row_count": 0})
+    )
+    _client().get_imported_symbols("src/app.js")
+
+    inner = json.loads(route.calls.last.request.content)["query"]
+    columns = inner["node"]["columns"]
+    assert "*" not in columns
+    assert "identifier_name" in columns
+    assert "import_path" in columns
+
+
+@respx.mock
 def test_get_status_hits_status_endpoint():
     route = respx.get("https://gitlab.com/api/v4/orbit/status").mock(
         return_value=httpx.Response(200, json={"status": "healthy"})
