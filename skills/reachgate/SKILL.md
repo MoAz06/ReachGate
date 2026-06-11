@@ -1,6 +1,6 @@
 ---
 name: reachgate
-description: "Triage a security finding by walking the GitLab Orbit code graph from declared entry points to the vulnerable definition. Returns a deterministic REACHABLE or NOT_REACHABLE verdict with an auditable receipt."
+description: "Triage a security finding by walking the GitLab Orbit code graph from declared entry points to the vulnerable definition. Returns a deterministic REACHABLE, NOT_REACHABLE, or UNKNOWN verdict with an auditable receipt."
 metadata:
   slash-command: enabled
 ---
@@ -28,7 +28,7 @@ Read `VulnerabilityOccurrence.location`. It is a JSON string:
 ```json
 {"file": "path/to/file.js", "start_line": 42}
 ```
-Extract the `file` field. If absent, return `NOT_REACHABLE` with reason `"finding has no code location"`.
+Extract the `file` field. If absent, return `UNKNOWN` with basis `insufficient_evidence:no_location`. Absence of a location is not proof of unreachability.
 
 ### Step 2 — Find vulnerable definitions
 
@@ -45,7 +45,7 @@ Query Orbit for `Definition` nodes in the vulnerable file:
   "limit": 50
 }
 ```
-Collect all returned IDs as `target_ids`. If empty, return `NOT_REACHABLE` with reason `"no indexed definitions in vulnerable file"`.
+Collect all returned IDs as `target_ids`. If empty, return `UNKNOWN` with basis `insufficient_evidence:no_definitions_indexed`.
 
 ### Step 3 — Resolve entry points to File nodes
 
@@ -108,17 +108,31 @@ These weights are fixed. Do not alter them or invent new rules.
 
 **Threshold:** score >= 50 → `REACHABLE`, score < 50 → `NOT_REACHABLE`.
 
+**UNKNOWN overrides the threshold.** Return `UNKNOWN` (never `NOT_REACHABLE`) when the evidence is insufficient:
+
+| Basis | Condition |
+|---|---|
+| `insufficient_evidence:no_location` | finding has no code location |
+| `insufficient_evidence:no_definitions_indexed` | vulnerable file has no indexed definitions |
+| `insufficient_evidence:no_entrypoints` | no entry-point File nodes resolved |
+| `insufficient_evidence:bounds_hit` | the walk was cut off by max_hops or a node/time budget before the frontier was exhausted |
+| `insufficient_evidence:api_error` | an Orbit query failed during the walk |
+
+`NOT_REACHABLE` requires an exhaustive negative: every walk ran until its frontier was empty, within bounds, with zero query errors. Its basis is `no_path_search_exhaustive`.
+
 ### Step 6 — Take action
 
 - **REACHABLE**: Create a GitLab work item titled `[ReachGate] Reachable: <finding name>`, labelled `reachgate::reachable` and `severity::<severity>`. If on a merge request, post the receipt as an MR comment.
 - **NOT_REACHABLE**: Post the receipt only. No escalation.
+- **UNKNOWN**: Post the receipt only and state what evidence was missing. Never close, deprioritize, or escalate on insufficient evidence.
 
 ## Receipt format (always produce this exactly)
 
 ```
 ## ReachGate Triage Receipt
 
-**Verdict:** [🔴 `REACHABLE` | 🟢 `NOT_REACHABLE`]
+**Verdict:** [🔴 `REACHABLE` | 🟢 `NOT_REACHABLE` | 🟡 `UNKNOWN`]
+**Basis:** [`path_found` | `no_path_search_exhaustive` | `insufficient_evidence:<reason>`]
 **Risk score:** <score>
 **Finding:** <name> (<severity>)
 
@@ -140,7 +154,7 @@ flowchart LR
 ```
 (<N> hop(s) from entry point `<entry_point>`)
 
-For NOT_REACHABLE, render the two nodes disconnected with a dotted link labelled `no path found` and style the target with `fill:#2da44e` (green) instead of red. Add one Mermaid node per intermediate hop when the path is longer.
+For NOT_REACHABLE, render the two nodes disconnected with a dotted link labelled `no path found` and style the target with `fill:#2da44e` (green) instead of red. For UNKNOWN, label the dotted link `evidence insufficient` and style the target with `fill:#bf8700` (amber). Add one Mermaid node per intermediate hop when the path is longer.
 
 ### Rule breakdown
 - `path_exists` (+50): <one line>
@@ -154,7 +168,7 @@ For NOT_REACHABLE, render the two nodes disconnected with a dotted link labelled
 ## Rules of conduct
 
 - Quote real node paths from Orbit. Never fabricate a graph path.
-- If Orbit returns no path, the verdict is `NOT_REACHABLE`, full stop.
+- No path + exhaustive search = `NOT_REACHABLE`. No path + cut-off or failed search = `UNKNOWN`. Never present an incomplete search as proof of unreachability.
 - The engine decides; you only execute the steps and write the explanation.
 - State exactly what each Orbit query returned. If a step returns nothing, say so.
 - No em dashes in output.

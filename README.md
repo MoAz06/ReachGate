@@ -18,8 +18,9 @@ For each security finding, ReachGate:
 2. Walks the graph (CALLS and IMPORTS edges) from a declared entry point to the vulnerable definition using a bounded BFS over the `neighbors` query
 3. A deterministic policy engine (transparent rule weights, no model score) returns a verdict:
    - **REACHABLE** — creates a GitLab work item, attaches the path as an auditable receipt
-   - **NOT_REACHABLE** — deprioritizes, with evidence (no path from any entry point)
-4. Posts a receipt (graph path + rule breakdown + score) as a work item or MR comment — including a Mermaid diagram of the path that GitLab renders inline:
+   - **NOT_REACHABLE** — deprioritizes, with evidence: every walk ran to completion (frontier exhausted) and found no path. An exhaustive negative, not a shrug.
+   - **UNKNOWN** — the evidence was insufficient (no code location, nothing indexed, no entry points resolved, search bounds hit, or an API error). ReachGate never dresses up a cut-off search as proof of unreachability.
+4. Posts a receipt (graph path + rule breakdown + score + reachability certificate) as a work item or MR comment — including a Mermaid diagram of the path that GitLab renders inline:
 
 ```mermaid
 flowchart LR
@@ -48,6 +49,14 @@ entrypoints:
 
 ReachGate never guesses what is reachable from the outside. You declare the boundary; the engine enforces it.
 
+## Every verdict carries a certificate
+
+A verdict without a record of how the search ran is just an assertion. Each receipt ships with a collapsible **reachability certificate**: the policy version (a hash of the rule weights and threshold), the search bounds (`max_hops`, `max_visited`, `max_seconds`), how many entry points were checked, how many nodes were visited, how many Orbit API calls it cost, which evidence modes produced the verdict (graph edges or `ImportedSymbol` fallback), and whether any bound cut the walk short.
+
+Each receipt also carries a stable **fingerprint** — a hash over the finding identity, verdict, path, policy version, and declared attack surface (never timing or call counts). The same finding under the same policy always fingerprints identically. This is the foundation for fingerprint-based deduplication of comments and work items (planned next); today the CI job skips reruns with a simpler receipt-presence check.
+
+The CI job additionally uploads `reachgate-receipts.json`: a machine-readable artifact with every receipt, full certificate, and the active policy, so verdicts can be diffed, audited, and replayed outside GitLab.
+
 ## CI/CD integration
 
 Add ReachGate to your pipeline — it runs on every MR and posts a triage receipt automatically.
@@ -74,8 +83,10 @@ agent.py          -- orchestration entry point
     |
     +-- orbit_client.py     -- Orbit REST API (traversal + neighbors queries)
     +-- graph_walker.py     -- bounded BFS over DEFINES/IMPORTS/CALLS edges
+    +-- path_strategy.py    -- BFS with termination reporting (why each walk stopped)
+    +-- certificate.py      -- reachability certificate + stable receipt fingerprint
     +-- policy_engine.py    -- deterministic weighted rules -> verdict + receipt
-    +-- actions.py          -- GitLab work items, MR comments, receipt rendering
+    +-- actions.py          -- GitLab work items, MR comments, receipts, JSON artifact
 ```
 
 The policy engine is transparent: `risk_score = sum of triggered rule weights`. The model never decides; it only explains the receipt.
@@ -109,8 +120,8 @@ python tools/demo_e2e.py
 ```
 
 Output:
-- **Finding A** (SSRF, high): `REACHABLE` — score 85, 1 hop from `content/frontend/404/archives_redirect.js`
-- **Finding B** (Path Traversal, medium): `NOT_REACHABLE` — score 8, no path from any entry point
+- **Finding A** (SSRF, high): `REACHABLE` — score 85, 1 hop from `content/frontend/404/archives_redirect.js`, basis `path_found`
+- **Finding B** (Path Traversal, medium): `NOT_REACHABLE` — score 8, basis `no_path_search_exhaustive`: both walks exhausted their frontier within bounds (verified with `tools/preflight_bounds.py`)
 
 ## Agentic mode (Duo Chat + Orbit MCP)
 
@@ -128,7 +139,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, appl
 pytest
 ```
 
-55 tests covering config loading, policy engine verdicts, rule triggers, glob matching, BFS path strategy, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram), and the reachable/unreachable flip.
+100 tests covering config loading, policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, the JSON artifact, and the reachable/unreachable flip.
 
 ## What we learned about Orbit
 
@@ -141,6 +152,8 @@ Building ReachGate surfaced Orbit behavior that is not in the docs:
 ## Honest scope
 
 Path accuracy depends on Orbit's indexing depth for the target language. The entry-point config is the source of truth for what counts as the attack surface — an incomplete `reachgate.yml` produces false negatives by design: ReachGate never guesses the attack surface.
+
+`NOT_REACHABLE` is only claimed when the search is an exhaustive negative: every walk ran until its frontier was empty, within bounds, with zero API errors. Anything less — a hop limit, a node budget, a timeout, a failed query — is reported as `UNKNOWN` with the exact reason in the receipt.
 
 ## License
 

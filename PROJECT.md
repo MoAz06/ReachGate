@@ -81,13 +81,18 @@ reachgate/
 │   ├── hunt_demo_target.py # Helper om demo-targets te vinden
 │   └── smoke_client.py     # Snelle smoke-test van de Orbit-verbinding
 │
-├── tests/                  # 55 tests (pytest + respx fixtures)
+├── tests/                  # 100 tests (pytest + respx fixtures)
 │   ├── fixtures/           # Vastgelegde live Orbit-responses (JSON)
+│   ├── test_artifact.py
+│   ├── test_certificate.py
 │   ├── test_config.py
 │   ├── test_graph_walker.py
 │   ├── test_orbit_client.py
 │   ├── test_path_strategy.py
-│   └── test_policy_engine.py
+│   ├── test_policy_engine.py
+│   ├── test_receipt.py
+│   ├── test_search_outcome.py
+│   └── test_unknown_verdict.py
 │
 ├── examples/demo-app/      # Voorbeeldapp met eigen reachgate.yml
 ├── reachgate.yml           # Standaard entry-point configuratie
@@ -426,7 +431,7 @@ De gepubliceerde agent in de GitLab AI Catalog (`AI > Agents > ReachGate`) heeft
 
 ## 9. Testdekking
 
-**55 tests, allemaal groen** (incl. ImportedSymbol-fallback, import-resolutie en Mermaid-receipt rendering). Draaien met:
+**100 tests, allemaal groen** (incl. ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit). Draaien met:
 ```bash
 pytest
 ```
@@ -438,6 +443,11 @@ pytest
 | `test_graph_walker.py` | Location-parsing, no-location edge case, path-extractie uit mock-responses |
 | `test_orbit_client.py` | Query-bouw, response-parsing, edge-filtering, respx-fixtures over live-captured responses |
 | `test_path_strategy.py` | BoundedBFS: direct hit, 1-hop, N-hop, geen pad, max_hops limiet, neighbor-cache |
+| `test_search_outcome.py` | Terminatie-rapportage per walk: path_found, frontier_exhausted, max_hops_hit, visited_cap_hit, timeout_hit, API-errors |
+| `test_unknown_verdict.py` | UNKNOWN bij elke insufficient-evidence reden; NOT_REACHABLE alleen bij uitgeputte frontier; certificate-assemblage; fingerprint stabiel over runs |
+| `test_certificate.py` | Fingerprint-determinisme, gevoeligheid (verdict/severity/policy/surface), globs-hash orde-onafhankelijk |
+| `test_artifact.py` | JSON-artifact schema, serialiseerbaarheid, certificate-render in Markdown, UNKNOWN-render (🟡) |
+| `test_receipt.py` | Mermaid-rendering, node-labels, quote-escaping, plaintext pad |
 
 **Fixtures** in `tests/fixtures/`:
 - `orbit_neighbors_*.json` - live-captured neighbors-responses
