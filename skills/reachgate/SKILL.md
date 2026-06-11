@@ -78,6 +78,23 @@ For each entry-point File, use the `neighbors` query to walk outward over `DEFIN
 
 Record the first path found: `[entry_point_file, ..., vulnerable_definition]`.
 
+**Fallback — `ImportedSymbol` nodes.** For some languages (notably JavaScript) Orbit may index imports as `ImportedSymbol` nodes rather than IMPORTS/CALLS edges. If the edge walk returns nothing, query `ImportedSymbol` nodes for each entry-point file:
+
+```json
+{
+  "query_type": "traversal",
+  "node": {
+    "id": "imp",
+    "entity": "ImportedSymbol",
+    "columns": ["*"],
+    "filters": {"file_path": {"op": "eq", "value": "<entry_point_file>"}}
+  },
+  "limit": 100
+}
+```
+
+A row whose `identifier_name` matches a vulnerable definition name and whose `import_path` resolves to the vulnerable file is a valid 2-hop path: `entry_point_file -[NamedImport]-> vulnerable_definition`. Cite the `ImportedSymbol` node ID as evidence.
+
 ### Step 5 — Apply the deterministic policy
 
 These weights are fixed. Do not alter them or invent new rules.
