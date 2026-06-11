@@ -78,10 +78,15 @@ Live examples:
 - [MR !1](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/1) — the pipeline walked the Orbit graph and posted both verdicts as comments: the SSRF is REACHABLE (escalated to a work item in the original demo flow), the path traversal is NOT_REACHABLE. Same scanner severity class, opposite triage outcomes, on one merge request.
 - [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) — live proof that MR triage is fingerprint-idempotent. The first run created two receipt comments; the rerun logged `unchanged` for both fingerprints, kept the comment count at 2, uploaded `reachgate-receipts.json` again, and created no work items from the MR flow.
 
-Proof assets for MR !3:
+## Proof gallery
 
-- Screenshots: `docs/img/mr3-overview-pipeline-passed.png`, `docs/img/mr3-pipelines-two-passed-runs.png`, `docs/img/mr3-job-unchanged-ssrf-log.png`, `docs/img/mr3-job-unchanged-pathtraversal-artifact-log.png`
-- Artifact snapshot: `docs/proof/mr3-reachgate-receipts-rerun.json`
+| Evidence | What it proves | Local proof |
+|---|---|---|
+| [MR !2](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/2) receipts | Phase 1 live engine proof: the CI job posted one `REACHABLE` receipt and one exhaustive `NOT_REACHABLE` receipt, each with a reachability certificate. | `docs/img/mr2-reachable-comment.png`, `docs/img/mr2-not-reachable-comment.png`, `docs/img/mr2-reachable-certificate.png`, `docs/img/mr2-not-reachable-certificate.png` |
+| [MR !2](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/2) artifact | The pipeline uploaded a machine-readable `reachgate-receipts.json` artifact with both verdicts and certificates. | `docs/img/mr2-artifact-download.png`, `docs/proof/mr2-reachgate-receipts.json` |
+| [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) rerun | Phase 2 live workflow proof: rerunning MR triage logged `unchanged` for both fingerprints, kept the comment count stable, uploaded the artifact again, and did not create work items from the MR flow. | `docs/img/mr3-pipelines-two-passed-runs.png`, `docs/img/mr3-job-unchanged-ssrf-log.png`, `docs/img/mr3-job-unchanged-pathtraversal-artifact-log.png` |
+| [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) receipts | The idempotent MR flow still leaves reviewers with the same auditable red/green receipts and certificates. | `docs/img/mr3-reachable-comment-certificate.png`, `docs/img/mr3-not-reachable-comment-certificate.png` |
+| [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) artifact | Reruns still publish `reachgate-receipts.json`, so automation gets a fresh artifact even when comments are unchanged. | `docs/img/mr3-artifact-dropdown.png`, `docs/proof/mr3-reachgate-receipts-rerun.json` |
 
 ## Architecture
 

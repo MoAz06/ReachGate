@@ -46,6 +46,17 @@ We validated everything against the live API on a real indexed project (the GitL
 
 We also live-tested the MR workflow on MR !3: the first pipeline created two ReachGate receipt comments, the rerun logged `unchanged` for both fingerprints, the comment count stayed 2, `reachgate-receipts.json` uploaded again, and the issue count stayed unchanged. That proves the MR flow is not a one-shot demo or a comment spammer.
 
+### Proof gallery
+
+| Proof | Why it matters |
+|---|---|
+| MR !2 live receipts | Shows the core engine working on live Orbit data: one `REACHABLE` finding with a graph path and one exhaustive `NOT_REACHABLE` finding with a certificate. |
+| MR !2 artifact | Shows the same verdicts are machine-readable in `reachgate-receipts.json`, not just prose in a comment. |
+| MR !3 first run + rerun | Shows the workflow is production-shaped: first run creates receipt comments, rerun logs `unchanged`, comment count stays 2, artifact uploads again, and no work item is created by the MR flow. |
+| MR !3 certificates | Shows idempotency did not remove auditability: reviewers still see the red/green graph receipts and collapsible reachability certificates. |
+
+Screenshots live in `docs/img/mr2-*.png` and `docs/img/mr3-*.png`; artifact snapshots live in `docs/proof/`.
+
 ### Design choices
 
 - **You declare the attack surface.** `reachgate.yml` entry-point globs are the source of truth. ReachGate never guesses what is externally reachable; an incomplete declaration produces false negatives by design.
