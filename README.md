@@ -4,6 +4,12 @@ Agentic vulnerability-reachability triage built on [GitLab Orbit](https://docs.g
 
 Security scanners tell you that a vulnerability exists. ReachGate answers whether it matters: it walks Orbit's code graph from a declared application entry point to the vulnerable definition, records the path as evidence, and takes deterministic triage action inside GitLab.
 
+## Why reachability
+
+Security teams drown in scanner output, and most of it does not matter: Datadog's [State of DevSecOps 2025](https://www.datadoghq.com/state-of-devsecops-2025/) found that only 18% of vulnerabilities with a critical CVSS score remain critical once runtime and reachability context is applied. Four out of five "critical" findings are noise. Triage is the bottleneck, and today it is manual.
+
+GitLab already has the missing ingredient: Orbit indexes the codebase as a knowledge graph of files, definitions, imports, and calls. ReachGate turns that graph into a triage engine — every verdict is a concrete graph path (or its provable absence), not a model's opinion.
+
 ## What it does
 
 For each security finding, ReachGate:
@@ -13,7 +19,18 @@ For each security finding, ReachGate:
 3. A deterministic policy engine (transparent rule weights, no model score) returns a verdict:
    - **REACHABLE** — creates a GitLab work item, attaches the path as an auditable receipt
    - **NOT_REACHABLE** — deprioritizes, with evidence (no path from any entry point)
-4. Posts a receipt (graph path + rule breakdown + score) as a work item or MR comment
+4. Posts a receipt (graph path + rule breakdown + score) as a work item or MR comment — including a Mermaid diagram of the path that GitLab renders inline:
+
+```mermaid
+flowchart LR
+    n0["📄 content/frontend/404/archives_redirect.js"]
+    n1["ƒ getArchivesVersions"]
+    n0 --> n1
+    classDef entry fill:#1f6feb,color:#fff,stroke:none;
+    classDef vuln fill:#da3633,color:#fff,stroke:none;
+    class n0 entry;
+    class n1 vuln;
+```
 
 ## Entry points are configurable
 
@@ -93,9 +110,15 @@ Output:
 - **Finding A** (SSRF, high): `REACHABLE` — score 85, 1 hop from `content/frontend/404/archives_redirect.js`
 - **Finding B** (Path Traversal, medium): `NOT_REACHABLE` — score 8, no path from any entry point
 
-## Agent skill
+## Agentic mode (Duo Chat + Orbit MCP)
 
-The `skills/reachgate/SKILL.md` publishes `/reachgate` as a slash command for AI coding agents that support the [Agent Skills](https://docs.gitlab.com/user/duo_agent_platform/customize/agent_skills/) specification. The agent in the GitLab AI Catalog runs the same deterministic workflow.
+ReachGate also runs fully agentically inside VS Code: the [Agent Skill](https://docs.gitlab.com/user/duo_agent_platform/customize/agent_skills/) at `skills/reachgate/SKILL.md` publishes `/reachgate` as a slash command, and the Orbit MCP server gives Duo Chat live graph access. Three steps:
+
+1. Install the [GitLab Workflow extension](https://marketplace.visualstudio.com/items?itemName=GitLab.gitlab-workflow) and open this repo
+2. The Orbit MCP server is preconfigured in `.gitlab/duo/mcp.json` — approve it in **GitLab: Show MCP Dashboard**
+3. Ask Duo Chat to `/reachgate` a finding
+
+The agent executes real `query_graph` calls against Orbit, walks the graph, applies the same fixed rule weights as the Python engine, and creates the work item — live. The ReachGate agent published in the GitLab AI Catalog carries the same workflow.
 
 ## Tests
 
@@ -103,11 +126,19 @@ The `skills/reachgate/SKILL.md` publishes `/reachgate` as a slash command for AI
 pytest
 ```
 
-42 tests covering config loading, policy engine verdicts, rule triggers, glob matching, BFS path strategy, and the reachable/unreachable flip.
+55 tests covering config loading, policy engine verdicts, rule triggers, glob matching, BFS path strategy, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram), and the reachable/unreachable flip.
+
+## What we learned about Orbit
+
+Building ReachGate surfaced Orbit behavior that is not in the docs:
+
+- **No native pathfinding.** The `neighbors` query is the traversal primitive. ReachGate implements BFS over `neighbors` with a shared cache, bounded by `max_hops`, `max_visited`, and `max_seconds`.
+- **Imports are not always edges.** For JavaScript, Orbit can index import relationships as `ImportedSymbol` *nodes* (`file_path`, `identifier_name`, `import_path`, `import_type`) rather than IMPORTS/CALLS edges. ReachGate's skill and engine both treat a matching `ImportedSymbol` as first-class path evidence.
+- **The Orbit MCP server wraps tools.** `https://gitlab.com/api/v4/orbit/mcp` exposes `list_commands` + `invoke_command`; `query_graph` and `get_graph_schema` live inside `invoke_command`. The config in `.gitlab/duo/mcp.json` requires an explicit `"type": "http"` field.
 
 ## Honest scope
 
-Orbit's `neighbors` query is the traversal primitive — there is no native pathfinding endpoint. ReachGate implements BFS over `neighbors` with a shared cache, bounded by `max_hops`, `max_visited`, and `max_seconds`. Path accuracy depends on Orbit's indexing depth for the target language. The entry-point config is the source of truth for what counts as the attack surface.
+Path accuracy depends on Orbit's indexing depth for the target language. The entry-point config is the source of truth for what counts as the attack surface — an incomplete `reachgate.yml` produces false negatives by design: ReachGate never guesses the attack surface.
 
 ## License
 

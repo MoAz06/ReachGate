@@ -123,10 +123,24 @@ These weights are fixed. Do not alter them or invent new rules.
 **Finding:** <name> (<severity>)
 
 ### Graph path
+
+```mermaid
+flowchart LR
+    n0["📄 <entry_point>"]
+    n1["ƒ <vulnerable_definition>"]
+    n0 --> n1
+    classDef entry fill:#1f6feb,color:#fff,stroke:none;
+    classDef vuln fill:#da3633,color:#fff,stroke:none;
+    class n0 entry;
+    class n1 vuln;
+```
+
 ```
 <entry_point> -> <node> -> ... -> <vulnerable_definition>
 ```
 (<N> hop(s) from entry point `<entry_point>`)
+
+For NOT_REACHABLE, render the two nodes disconnected with a dotted link labelled `no path found` and style the target with `fill:#2da44e` (green) instead of red. Add one Mermaid node per intermediate hop when the path is longer.
 
 ### Rule breakdown
 - `path_exists` (+50): <one line>
