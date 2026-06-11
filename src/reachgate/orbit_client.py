@@ -115,6 +115,24 @@ class OrbitClient:
             }))
         return results
 
+    def get_imported_symbols(self, file_path: str) -> list[dict[str, Any]]:
+        """ImportedSymbol nodes for a file.
+
+        Some languages (notably JavaScript) are indexed with import
+        relationships as ImportedSymbol nodes rather than IMPORTS/CALLS
+        edges; these are first-class reachability evidence.
+        """
+        return self.query_nodes({
+            "query_type": "traversal",
+            "node": {
+                "id": "imp",
+                "entity": "ImportedSymbol",
+                "columns": ["*"],
+                "filters": {"file_path": {"op": "eq", "value": file_path}},
+            },
+            "limit": 200,
+        })
+
     # Code-graph edges used for reachability walks.
     CODE_EDGES = {"DEFINES", "IMPORTS", "CALLS"}
 

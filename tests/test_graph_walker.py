@@ -1,7 +1,12 @@
 import json
 import pytest
 from unittest.mock import MagicMock
-from src.reachgate.graph_walker import GraphWalker, extract_file_from_location, ReachabilityResult
+from src.reachgate.graph_walker import (
+    GraphWalker,
+    ReachabilityResult,
+    extract_file_from_location,
+    import_resolves_to,
+)
 from src.reachgate.config import ReachGateConfig, PolicyConfig
 from src.reachgate.path_strategy import PathNode
 
@@ -21,6 +26,34 @@ class _FakeStrategy:
 
     def find_path(self, entry_file, target_ids, max_hops):
         return self._path
+
+
+def test_import_resolves_relative_path_without_extension():
+    assert import_resolves_to(
+        "../services/fetch_versions",
+        "content/frontend/404/archives_redirect.js",
+        "content/frontend/services/fetch_versions.js",
+    )
+
+
+def test_import_resolves_rejects_different_module():
+    assert not import_resolves_to(
+        "../services/other",
+        "content/frontend/404/archives_redirect.js",
+        "content/frontend/services/fetch_versions.js",
+    )
+
+
+def test_import_resolves_absolute_module_path():
+    assert import_resolves_to(
+        "content/frontend/services/fetch_versions.js",
+        "anything.js",
+        "content/frontend/services/fetch_versions.js",
+    )
+
+
+def test_import_resolves_empty_path_is_false():
+    assert not import_resolves_to("", "a.js", "b.js")
 
 
 def test_extract_file_from_sast_location():
@@ -63,8 +96,57 @@ def test_check_reachability_not_reachable_when_no_path():
     client = MagicMock()
     client.get_definitions_for_file.return_value = [{"id": "99", "fqn": "legacy.fn", "file_path": "scripts/legacy/tool.py"}]
     client.get_files_matching.return_value = [{"id": "1", "path": "src/routes/users.py"}]
+    client.get_imported_symbols.return_value = []
     strategy = _FakeStrategy(None)
     walker = GraphWalker(client, _config(), strategy=strategy)
     occ = {"location": json.dumps({"file": "scripts/legacy/tool.py", "start_line": 17})}
+    result = walker.check_reachability(occ)
+    assert not result.reachable
+
+
+def test_imported_symbol_fallback_finds_named_import():
+    """When edge BFS fails, a matching ImportedSymbol node is a 2-hop path."""
+    client = MagicMock()
+    client.get_definitions_for_file.return_value = [
+        {"id": "99", "name": "getArchivesVersions", "file_path": "content/frontend/services/fetch_versions.js"}
+    ]
+    client.get_files_matching.return_value = [{"id": "1", "path": "src/routes/redirect.js"}]
+    client.get_imported_symbols.return_value = [
+        {
+            "identifier_name": "getArchivesVersions",
+            "import_path": "../../content/frontend/services/fetch_versions",
+            "import_type": "NamedImport",
+            "file_path": "src/routes/redirect.js",
+        }
+    ]
+    walker = GraphWalker(client, _config(), strategy=_FakeStrategy(None))
+    occ = {"location": json.dumps({"file": "content/frontend/services/fetch_versions.js"})}
+    result = walker.check_reachability(occ)
+    assert result.reachable
+    assert result.hops == 2
+    assert result.path == [
+        "File:src/routes/redirect.js",
+        "ImportedSymbol:getArchivesVersions",
+        "Definition:getArchivesVersions",
+    ]
+
+
+def test_imported_symbol_fallback_rejects_wrong_module():
+    """Same symbol name imported from a different module is not a path."""
+    client = MagicMock()
+    client.get_definitions_for_file.return_value = [
+        {"id": "99", "name": "getArchivesVersions", "file_path": "content/frontend/services/fetch_versions.js"}
+    ]
+    client.get_files_matching.return_value = [{"id": "1", "path": "src/routes/redirect.js"}]
+    client.get_imported_symbols.return_value = [
+        {
+            "identifier_name": "getArchivesVersions",
+            "import_path": "./other_module",
+            "import_type": "NamedImport",
+            "file_path": "src/routes/redirect.js",
+        }
+    ]
+    walker = GraphWalker(client, _config(), strategy=_FakeStrategy(None))
+    occ = {"location": json.dumps({"file": "content/frontend/services/fetch_versions.js"})}
     result = walker.check_reachability(occ)
     assert not result.reachable

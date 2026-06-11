@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import posixpath
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -19,6 +20,24 @@ class ReachabilityResult:
     entry_point: str | None = None
     vulnerable_file: str | None = None
     vulnerable_definition: str | None = None
+
+
+def import_resolves_to(import_path: str, importing_file: str, target_file: str) -> bool:
+    """True if a module import path resolves to the target file.
+
+    Relative paths are resolved against the importing file's directory;
+    extensions are ignored ('../services/fetch_versions' matches
+    'content/frontend/services/fetch_versions.js').
+    """
+    if not import_path:
+        return False
+    if import_path.startswith("."):
+        base = posixpath.dirname(importing_file)
+        resolved = posixpath.normpath(posixpath.join(base, import_path))
+    else:
+        resolved = import_path
+    target_no_ext = target_file.rsplit(".", 1)[0]
+    return resolved in (target_file, target_no_ext)
 
 
 def extract_file_from_location(location_json: str) -> str | None:
@@ -83,4 +102,49 @@ class GraphWalker:
                 vulnerable_definition=path[-1].label,
             )
 
+        # Fallback: some languages (notably JavaScript) are indexed with
+        # import relationships as ImportedSymbol nodes rather than
+        # IMPORTS/CALLS edges. A named import of a vulnerable definition
+        # from the vulnerable file is a valid 2-hop path.
+        definition_names = {d.get("name") for d in definitions if d.get("name")}
+        for entry in entry_files:
+            entry_path = entry.get("path", "")
+            result = self._check_imported_symbols(
+                entry_path, definition_names, vuln_file
+            )
+            if result:
+                return result
+
         return ReachabilityResult(reachable=False, vulnerable_file=vuln_file)
+
+    def _check_imported_symbols(
+        self,
+        entry_path: str,
+        definition_names: set[str],
+        vuln_file: str,
+    ) -> ReachabilityResult | None:
+        try:
+            symbols = self._client.get_imported_symbols(entry_path)
+        except Exception:
+            return None
+        for sym in symbols:
+            name = sym.get("identifier_name")
+            if name not in definition_names:
+                continue
+            if not import_resolves_to(
+                sym.get("import_path", ""), entry_path, vuln_file
+            ):
+                continue
+            return ReachabilityResult(
+                reachable=True,
+                path=[
+                    f"File:{entry_path}",
+                    f"ImportedSymbol:{name}",
+                    f"Definition:{name}",
+                ],
+                hops=2,
+                entry_point=entry_path,
+                vulnerable_file=vuln_file,
+                vulnerable_definition=name,
+            )
+        return None
