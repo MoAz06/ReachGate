@@ -15,7 +15,7 @@ reachgate-triage:
   before_script:
     - pip install --quiet httpx pyyaml
   script:
-    - python -m src.reachgate.agent
+    - python tools/mr_triage.py
   allow_failure: true
 
 # Runs the live demo against the GitLab docs-site (publicly indexed in Orbit).
@@ -24,6 +24,8 @@ reachgate-live-demo:
   stage: security-triage
   image: python:3.11-slim
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - when: manual
   before_script:
