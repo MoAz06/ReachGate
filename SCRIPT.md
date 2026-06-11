@@ -31,8 +31,9 @@ Most security tools stop at "this vulnerability exists"; ReachGate answers the q
 | 0:00-0:15 | README title/tagline or Devpost title | Most security tools stop at "this vulnerability exists." ReachGate answers the question reviewers actually need in a merge request: can this vulnerable code be reached from the application's entry points? | Potential Impact, Quality of Idea | Do not say it proves all security risk. |
 | 0:15-0:32 | README "What it does", CI section, or `reachgate.yml` entrypoints | For real projects, the CI job can load GitLab SAST or native JSON findings. You declare the attack surface in `reachgate.yml`, then ReachGate walks Orbit's files, definitions, imports and calls from those entry points to the vulnerable definition. | Technological Implementation, Design and Usability | Do not say ReachGate guesses entry points. |
 | 0:32-0:45 | README architecture or tests line | The key design choice is that the model never decides the verdict. The engine is deterministic: fixed rules, bounded graph search, 123 tests, and a receipt explaining the result. | Technological Implementation, Quality of Idea | Do not call the score model confidence. |
-| 0:45-1:12 | MR !3 reachable receipt with graph path visible | Here is the live MR proof. The SSRF finding is `REACHABLE` because Orbit found a graph path from `content/frontend/404/archives_redirect.js` to `getArchivesVersions`. That path triggers fixed rule weights: path exists, direct import, high severity. | Technological Implementation, Design and Usability | Do not say "the AI found this." |
-| 1:12-1:30 | MR !3 reachable certificate opened | Every verdict carries a reachability certificate: policy hash, search bounds, entry points checked, nodes visited, API calls, evidence mode, and whether any bound cut the search short. This makes the comment auditable instead of just persuasive. | Technological Implementation, Design and Usability | Do not read every field slowly. |
+| 0:45-0:55 | Work item #5 (labeled `reachgate::reachable`) next to the `/reachgate` skill / `agent/system_prompt.md` | The same deterministic engine also runs agentically: published as a `/reachgate` skill on the Orbit MCP server, it walked the graph live and opened this labeled work item itself. | Technological Implementation, Quality of Idea | Do not say the AI decided the verdict. Same fixed rules, just executed by the agent. |
+| 0:55-1:20 | MR !3 reachable receipt with graph path visible | Back in CI, here is the live MR proof. The SSRF finding is `REACHABLE` because Orbit found a graph path from `content/frontend/404/archives_redirect.js` to `getArchivesVersions`. That path triggers fixed rule weights: path exists, direct import, high severity. | Technological Implementation, Design and Usability | Do not say "the AI found this." |
+| 1:20-1:30 | MR !3 reachable certificate opened | Every verdict carries a reachability certificate: policy hash, search bounds, nodes visited, evidence mode, and whether any bound cut the search short — so the comment is auditable, not just persuasive. | Technological Implementation, Design and Usability | Do not read every field slowly. |
 | 1:30-1:55 | MR !3 not-reachable receipt and certificate | The second finding is the important contrast. Same pipeline, same Orbit graph, different result: `NOT_REACHABLE`. ReachGate only says that because the frontier was exhausted, no search bound was hit, and there were zero API errors. If evidence is incomplete, it returns `UNKNOWN`, not fake green. | Technological Implementation, Quality of Idea | Do not say globally unreachable. Say within configured bounds. |
 | 1:55-2:20 | MR !3 pipelines tab with two passed MR runs | This is not a one-shot demo. MR !3 was run twice. The first pipeline created the receipt comments; the rerun passed again on the same merge request. | Design and Usability, Technological Implementation | Do not imply the blocked branch pipeline matters. Focus on the two passed MR runs. |
 | 2:20-2:38 | MR !3 job log showing `unchanged` for both fingerprints | On rerun, ReachGate logs `unchanged` for both stable fingerprints. The comment count stays at two and the MR flow creates no work items. That means reviewers get durable evidence without duplicate noise. | Design and Usability, Potential Impact | Do not claim work-item idempotency. Only MR comments. |
@@ -58,13 +59,14 @@ Must include:
 
 1. README or Devpost title/tagline.
 2. `reachgate.yml` or README architecture showing entrypoints and Orbit graph workflow.
-3. MR !3 reachable receipt with red `REACHABLE` path visible.
-4. MR !3 reachable certificate opened.
-5. MR !3 not-reachable receipt with green `NOT_REACHABLE` and certificate opened.
-6. MR !3 pipelines tab showing the two passed MR runs.
-7. MR !3 job log showing `unchanged` for both fingerprints.
-8. MR !3 artifact dropdown or upload log for `reachgate-receipts.json`.
-9. README Proof Gallery.
+3. Work item #5 (agentic-created, labeled `reachgate::reachable`) beside the `/reachgate` skill or `agent/system_prompt.md`.
+4. MR !3 reachable receipt with red `REACHABLE` path visible.
+5. MR !3 reachable certificate opened.
+6. MR !3 not-reachable receipt with green `NOT_REACHABLE` and certificate opened.
+7. MR !3 pipelines tab showing the two passed MR runs.
+8. MR !3 job log showing `unchanged` for both fingerprints.
+9. MR !3 artifact dropdown or upload log for `reachgate-receipts.json`.
+10. README Proof Gallery.
 
 Optional if time remains:
 
@@ -88,13 +90,15 @@ Cut first if too long:
 - Incomplete evidence becomes `UNKNOWN`.
 - MR triage comments are fingerprint-idempotent.
 - The CI job uploads a machine-readable JSON receipt artifact.
-- The live proof is available in MR !2, MR !3, screenshots and artifacts.
+- The same engine runs agentically via the `/reachgate` skill on Orbit MCP; it opened labeled work item #5 itself.
+- The live proof is available in MR !2, MR !3, work item #5, screenshots and artifacts.
 
 ## Claims To Avoid
 
 - Do not say ReachGate guarantees no false positives or false negatives.
 - Do not say it globally proves code is unreachable.
 - Do not say the LLM found or decided the verdict.
+- Do not say the agent decides the verdict; it executes the same fixed rules and explains the receipt.
 - Do not call the risk score a probability or model confidence score.
 - Do not say work items are idempotent.
 - Do not claim native GitLab Vulnerability Report integration.
