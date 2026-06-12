@@ -28,6 +28,9 @@ import sys
 PROOF_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "proof")
 MR2 = os.path.join(PROOF_DIR, "mr2-reachgate-receipts.json")
 MR3 = os.path.join(PROOF_DIR, "mr3-reachgate-receipts-rerun.json")
+UNKNOWN = os.path.join(PROOF_DIR, "unknown-reachgate-receipt.json")
+
+UNKNOWN_BASIS = "insufficient_evidence:no_definitions_indexed"
 
 EXPECTED_BASIS = {
     "REACHABLE": "path_found",
@@ -93,6 +96,39 @@ def verify_artifact(name: str, artifact: dict, c: Checker) -> None:
                     cert.get("frontier_exhausted") is True)
 
 
+def verify_unknown(artifact: dict, c: Checker) -> None:
+    """The UNKNOWN artifact proves the third verdict is real and honest: a
+    finding Orbit has indexed but with no definitions to walk to produces
+    UNKNOWN with a reason -- never a NOT_REACHABLE dressed up as proof."""
+    name = "UNKNOWN"
+    c.check(f"{name}: schema_version == 1.0",
+            artifact.get("schema_version") == "1.0")
+
+    findings = artifact.get("findings", [])
+    if not c.require(f"{name}: exactly 1 finding", len(findings) == 1):
+        return
+    f = findings[0]
+    tag = f"{name}/{f.get('occurrence_id')}"
+
+    c.check(f"{tag}: verdict == UNKNOWN", f.get("verdict") == "UNKNOWN")
+    c.check(f"{tag}: verdict_basis == {UNKNOWN_BASIS!r}",
+            f.get("verdict_basis") == UNKNOWN_BASIS)
+
+    cert = f.get("certificate") or {}
+    c.check(f"{tag}: target_definitions_found == 0",
+            cert.get("target_definitions_found") == 0)
+    c.check(f"{tag}: api_errors == 0", cert.get("api_errors") == 0)
+    c.check(f"{tag}: no search bound hit",
+            cert.get("max_hops_hit") is False
+            and cert.get("visited_cap_hit") is False
+            and cert.get("timeout_hit") is False)
+    # UNKNOWN is NOT an exhaustive negative: the search never ran a frontier
+    # to exhaustion, so frontier_exhausted must be false. This is what keeps
+    # UNKNOWN distinct from NOT_REACHABLE.
+    c.check(f"{tag}: not exhaustive (frontier_exhausted == false)",
+            cert.get("frontier_exhausted") is False)
+
+
 def verify_fingerprints_match(mr2: dict, mr3: dict, c: Checker) -> None:
     a, b = _by_occurrence(mr2), _by_occurrence(mr3)
     c.check("MR2/MR3 cover the same findings", set(a) == set(b))
@@ -105,6 +141,7 @@ def main() -> int:
     c = Checker()
     mr2 = _load(MR2, c)
     mr3 = _load(MR3, c)
+    unknown = _load(UNKNOWN, c)
 
     if mr2 is not None:
         verify_artifact("MR2", mr2, c)
@@ -112,6 +149,8 @@ def main() -> int:
         verify_artifact("MR3", mr3, c)
     if mr2 is not None and mr3 is not None:
         verify_fingerprints_match(mr2, mr3, c)
+    if unknown is not None:
+        verify_unknown(unknown, c)
 
     if c.failures:
         print("ReachGate proof FAILED")
@@ -126,6 +165,8 @@ def main() -> int:
     print(f"- MR3: same fingerprints on rerun ({ssrf}, {pt})")
     print("- NOT_REACHABLE is exhaustive: frontier exhausted, "
           "no bounds hit, API errors 0")
+    print("- UNKNOWN is honest: a real indexed file with no definitions "
+          "yields insufficient_evidence, not fake-green")
     print("- verifies captured artifacts offline; rerun the linked MRs "
           "for live proof")
     return 0

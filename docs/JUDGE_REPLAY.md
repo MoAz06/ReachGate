@@ -15,6 +15,7 @@ the merge-request comments claim:
 
 - `docs/proof/mr2-reachgate-receipts.json` — the Phase 1 run (MR !2)
 - `docs/proof/mr3-reachgate-receipts-rerun.json` — the Phase 2 rerun (MR !3)
+- `docs/proof/unknown-reachgate-receipt.json` — a live UNKNOWN capture (the third verdict)
 
 Expected output:
 
@@ -40,6 +41,22 @@ Exit code is `0` on success, non-zero if any check fails.
 
 This checks the **captured** artifacts offline. It does not re-query GitLab.
 For live proof, re-run the pipelines on the merge requests below.
+
+### The third verdict: UNKNOWN
+
+`docs/proof/unknown-reachgate-receipt.json` is a live capture of the honest
+third verdict. The finding points at `gem/puma/CVE-2026-47736.yml` — a real
+file Orbit has indexed but which has **zero code definitions** to walk to.
+ReachGate cannot build a reachability path, so it returns:
+
+- verdict `UNKNOWN`, basis `insufficient_evidence:no_definitions_indexed`
+- `target_definitions_found == 0`, `api_errors == 0`, no search bound hit
+- `frontier_exhausted == false` — the search never ran to exhaustion, so this
+  is **not** a NOT_REACHABLE. The verifier asserts exactly that.
+
+This is what "ReachGate never dresses up missing evidence as proof" means in
+practice. It demonstrates **one** UNKNOWN reason (`no_definitions_indexed`),
+not every possible UNKNOWN case.
 
 ## 2. Live: the merge requests
 

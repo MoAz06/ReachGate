@@ -54,8 +54,9 @@ We also live-tested the MR workflow on MR !3: the first pipeline created two Rea
 | MR !2 artifact | Shows the same verdicts are machine-readable in `reachgate-receipts.json`, not just prose in a comment. |
 | MR !3 first run + rerun | Shows the workflow is production-shaped: first run creates receipt comments, rerun logs `unchanged`, comment count stays 2, artifact uploads again, and no work item is created by the MR flow. |
 | MR !3 certificates | Shows idempotency did not remove auditability: reviewers still see the red/green graph receipts and collapsible reachability certificates. |
+| UNKNOWN receipt | Shows the honest third verdict, captured live: a real indexed file with no code definitions (`gem/puma/CVE-2026-47736.yml`) yields `UNKNOWN` / `insufficient_evidence:no_definitions_indexed`, not a fake-green NOT_REACHABLE. One UNKNOWN reason, not all. |
 
-Screenshots live in `docs/img/mr2-*.png` and `docs/img/mr3-*.png`; artifact snapshots live in `docs/proof/`. Judges can verify the captured artifacts offline in one command — `python tools/verify_proof.py` (standard library only, no token) — which confirms matching fingerprints across MR !2 and MR !3, an exhaustive `NOT_REACHABLE`, and zero API errors. See `docs/JUDGE_REPLAY.md`.
+Screenshots live in `docs/img/mr2-*.png` and `docs/img/mr3-*.png`; artifact snapshots live in `docs/proof/`. Judges can verify the captured artifacts offline in one command — `python tools/verify_proof.py` (standard library only, no token) — which confirms matching fingerprints across MR !2 and MR !3, an exhaustive `NOT_REACHABLE`, an honest `UNKNOWN`, and zero API errors. See `docs/JUDGE_REPLAY.md`.
 
 ### Design choices
 

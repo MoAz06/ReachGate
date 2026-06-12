@@ -97,6 +97,7 @@ comments claim — matching fingerprints across MR !2 and MR !3, exhaustive
 | [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) rerun | Phase 2 live workflow proof: rerunning MR triage logged `unchanged` for both fingerprints, kept the comment count stable, uploaded the artifact again, and did not create work items from the MR flow. | `docs/img/mr3-pipelines-two-passed-runs.png`, `docs/img/mr3-job-unchanged-ssrf-log.png`, `docs/img/mr3-job-unchanged-pathtraversal-artifact-log.png` |
 | [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) receipts | The idempotent MR flow still leaves reviewers with the same auditable red/green receipts and certificates. | `docs/img/mr3-reachable-comment-certificate.png`, `docs/img/mr3-not-reachable-comment-certificate.png` |
 | [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) artifact | Reruns still publish `reachgate-receipts.json`, so automation gets a fresh artifact even when comments are unchanged. | `docs/img/mr3-artifact-dropdown.png`, `docs/proof/mr3-reachgate-receipts-rerun.json` |
+| UNKNOWN receipt | The honest third verdict, captured live: a real indexed file (`gem/puma/CVE-2026-47736.yml`) with no code definitions yields `UNKNOWN` / `insufficient_evidence:no_definitions_indexed` — never a fake-green NOT_REACHABLE. Demonstrates one UNKNOWN reason, not all. | `docs/proof/unknown-reachgate-receipt.json`, `docs/examples/unknown-finding.json` |
 
 ## Architecture
 
