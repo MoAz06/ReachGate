@@ -1,0 +1,12 @@
+{
+  "findings": [
+    {
+      "uuid": "demo-unknown",
+      "name": "Dependency advisory finding (no code to walk)",
+      "severity": "high",
+      "location": {
+        "file": "gem/puma/CVE-2026-47736.yml"
+      }
+    }
+  ]
+}

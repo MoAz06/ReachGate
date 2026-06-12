@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-06-12T19:59:32.507690+00:00",
+  "policy": {
+    "version": "8eae9f21a3e6",
+    "threshold": 50,
+    "rules": [
+      {
+        "name": "path_exists",
+        "weight": 50
+      },
+      {
+        "name": "direct_import",
+        "weight": 20
+      },
+      {
+        "name": "high_severity",
+        "weight": 15
+      },
+      {
+        "name": "medium_severity",
+        "weight": 8
+      }
+    ]
+  },
+  "findings": [
+    {
+      "verdict": "UNKNOWN",
+      "verdict_basis": "insufficient_evidence:no_definitions_indexed",
+      "risk_score": 15,
+      "risk_breakdown": [
+        {
+          "rule": "high_severity",
+          "weight": 15,
+          "reason": "Finding severity is critical or high."
+        }
+      ],
+      "path": [],
+      "hops": 0,
+      "entry_point": null,
+      "vulnerable_file": "gem/puma/CVE-2026-47736.yml",
+      "vulnerable_definition": null,
+      "occurrence_id": "demo-unknown",
+      "occurrence_name": "Dependency advisory finding (no code to walk)",
+      "severity": "high",
+      "fingerprint": "f215d5e5e0d416e3",
+      "certificate": {
+        "strategy": "bounded-bfs-v1",
+        "policy_version": "8eae9f21a3e6",
+        "bounds": {
+          "max_hops": 6,
+          "max_visited": null,
+          "max_seconds": null
+        },
+        "entrypoints_checked": 0,
+        "target_definitions_found": 0,
+        "nodes_visited": 0,
+        "max_hops_hit": false,
+        "visited_cap_hit": false,
+        "timeout_hit": false,
+        "frontier_exhausted": false,
+        "api_errors": 0,
+        "orbit_api_calls": 1,
+        "cache_hits": 0,
+        "strategies_attempted": [],
+        "evidence_modes": [],
+        "entrypoint_globs_hash": "7f553d39d98b"
+      }
+    }
+  ]
+}
