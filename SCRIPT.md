@@ -31,7 +31,7 @@ Most security tools stop at "this vulnerability exists"; ReachGate answers the q
 | 0:00-0:15 | README title/tagline or Devpost title | Most security tools stop at "this vulnerability exists." ReachGate answers the question reviewers actually need in a merge request: can this vulnerable code be reached from the application's entry points? | Potential Impact, Quality of Idea | Do not say it proves all security risk. |
 | 0:15-0:32 | README "What it does", CI section, or `reachgate.yml` entrypoints | For real projects, the CI job can load GitLab SAST or native JSON findings. You declare the attack surface in `reachgate.yml`, then ReachGate walks Orbit's files, definitions, imports and calls from those entry points to the vulnerable definition. | Technological Implementation, Design and Usability | Do not say ReachGate guesses entry points. |
 | 0:32-0:45 | README architecture or tests line | The key design choice is that the model never decides the verdict. The engine is deterministic: fixed rules, bounded graph search, 123 tests, and a receipt explaining the result. | Technological Implementation, Quality of Idea | Do not call the score model confidence. |
-| 0:45-0:55 | Work item #5 (labeled `reachgate::reachable`) next to the `/reachgate` skill / `agent/system_prompt.md` | The same deterministic engine also runs agentically: published as a `/reachgate` skill on the Orbit MCP server, it walked the graph live and opened this labeled work item itself. | Technological Implementation, Quality of Idea | Do not say the AI decided the verdict. Same fixed rules, just executed by the agent. |
+| 0:45-0:55 | `/reachgate` skill + `agent/system_prompt.md` + Orbit MCP config (and, if you have the recording, the agent run that created work item #3) | The same deterministic engine also runs agentically: published as a `/reachgate` skill with the Orbit MCP server wired into VS Code Duo Chat. Same fixed rules — the agent just executes them. | Technological Implementation, Quality of Idea | Do not say the agent decided the verdict. Do not claim a specific work item was agent-made unless its run log is on screen; work item #5 is the CI/action-flow item, not agentic. |
 | 0:55-1:20 | MR !3 reachable receipt with graph path visible | Back in CI, here is the live MR proof. The SSRF finding is `REACHABLE` because Orbit found a graph path from `content/frontend/404/archives_redirect.js` to `getArchivesVersions`. That path triggers fixed rule weights: path exists, direct import, high severity. | Technological Implementation, Design and Usability | Do not say "the AI found this." |
 | 1:20-1:30 | MR !3 reachable certificate opened | Every verdict carries a reachability certificate: policy hash, search bounds, nodes visited, evidence mode, and whether any bound cut the search short — so the comment is auditable, not just persuasive. | Technological Implementation, Design and Usability | Do not read every field slowly. |
 | 1:30-1:55 | MR !3 not-reachable receipt and certificate | The second finding is the important contrast. Same pipeline, same Orbit graph, different result: `NOT_REACHABLE`. ReachGate only says that because the frontier was exhausted, no search bound was hit, and there were zero API errors. If evidence is incomplete, it returns `UNKNOWN`, not fake green. | Technological Implementation, Quality of Idea | Do not say globally unreachable. Say within configured bounds. |
@@ -59,7 +59,7 @@ Must include:
 
 1. README or Devpost title/tagline.
 2. `reachgate.yml` or README architecture showing entrypoints and Orbit graph workflow.
-3. Work item #5 (agentic-created, labeled `reachgate::reachable`) beside the `/reachgate` skill or `agent/system_prompt.md`.
+3. Agentic signal: the `/reachgate` skill, `agent/system_prompt.md`, and Orbit MCP config (optionally the recorded agent run that created work item #3).
 4. MR !3 reachable receipt with red `REACHABLE` path visible.
 5. MR !3 reachable certificate opened.
 6. MR !3 not-reachable receipt with green `NOT_REACHABLE` and certificate opened.
@@ -90,8 +90,8 @@ Cut first if too long:
 - Incomplete evidence becomes `UNKNOWN`.
 - MR triage comments are fingerprint-idempotent.
 - The CI job uploads a machine-readable JSON receipt artifact.
-- The same engine runs agentically via the `/reachgate` skill on Orbit MCP; it opened labeled work item #5 itself.
-- The live proof is available in MR !2, MR !3, work item #5, screenshots and artifacts.
+- The same engine runs agentically: a published `/reachgate` skill with the Orbit MCP server in VS Code Duo Chat. The documented agentic run is linked as work item #3; the CI/action flow created the labeled work item #5.
+- The live proof is available in MR !2, MR !3, work items #3 and #5, screenshots and artifacts.
 
 ## Claims To Avoid
 
@@ -99,6 +99,7 @@ Cut first if too long:
 - Do not say it globally proves code is unreachable.
 - Do not say the LLM found or decided the verdict.
 - Do not say the agent decides the verdict; it executes the same fixed rules and explains the receipt.
+- Do not call work item #5 agent-created; #5 is the CI/action-flow item. Only call #3 agent-created when the run log or recording is shown.
 - Do not call the risk score a probability or model confidence score.
 - Do not say work items are idempotent.
 - Do not claim native GitLab Vulnerability Report integration.
