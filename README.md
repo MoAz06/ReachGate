@@ -80,6 +80,16 @@ Live examples:
 
 ## Proof gallery
 
+Verify it yourself in one command (standard library only, no token, offline):
+
+```bash
+python tools/verify_proof.py
+```
+
+It checks the captured receipt artifacts below against the verdicts the MR
+comments claim — matching fingerprints across MR !2 and MR !3, exhaustive
+`NOT_REACHABLE`, zero API errors. See [docs/JUDGE_REPLAY.md](docs/JUDGE_REPLAY.md) for the two-minute replay.
+
 | Evidence | What it proves | Local proof |
 |---|---|---|
 | [MR !2](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/2) receipts | Phase 1 live engine proof: the CI job posted one `REACHABLE` receipt and one exhaustive `NOT_REACHABLE` receipt, each with a reachability certificate. | `docs/img/mr2-reachable-comment.png`, `docs/img/mr2-not-reachable-comment.png`, `docs/img/mr2-reachable-certificate.png`, `docs/img/mr2-not-reachable-certificate.png` |
