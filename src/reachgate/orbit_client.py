@@ -18,6 +18,7 @@ come back as strings. Edges carry from_id, to_id, and type.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import httpx
@@ -100,12 +101,36 @@ class OrbitClient:
         })
         return nodes[0] if nodes else None
 
+    @staticmethod
+    def _literal_needle(pattern: str) -> str:
+        """Longest literal (glob-free) segment of a glob pattern.
+
+        The Orbit `contains` filter is a plain substring match, so a glob
+        like ``cmd/**/main.*`` must NOT be sent verbatim - it would search
+        for the literal substring ``cmd/**/main.`` and match nothing. We
+        split the pattern on path separators and glob metacharacters and
+        return the longest remaining literal run (e.g. ``main.`` for
+        ``cmd/**/main.*``, ``routes`` for ``src/routes/**/*``). This is a
+        coarse prefetch; ``ReachGateConfig.is_entrypoint`` does the exact
+        glob filtering afterwards, so over-fetching is safe.
+        """
+        segments = re.split(r"[/*?]+", pattern)
+        literals = [s for s in segments if s]
+        return max(literals, key=len) if literals else ""
+
     def get_files_matching(self, patterns: list[str]) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
+        seen_needles: set[str] = set()
         for pattern in patterns:
-            needle = pattern.strip("*/")
+            needle = self._literal_needle(pattern)
             if len(needle) < 3:
-                continue  # API rejects search patterns under 3 chars
+                # API rejects search patterns under 3 chars. Without a usable
+                # literal we cannot prefetch; is_entrypoint still filters any
+                # files surfaced by other patterns, so just skip this one.
+                continue
+            if needle in seen_needles:
+                continue  # avoid redundant identical queries
+            seen_needles.add(needle)
             results.extend(self.query_nodes({
                 "query_type": "traversal",
                 "node": {

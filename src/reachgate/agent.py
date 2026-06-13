@@ -21,7 +21,12 @@ def run(
     severity_filter: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     gitlab_url = gitlab_url or os.environ.get("GITLAB_URL", "https://gitlab.com")
-    token = token or os.environ["GITLAB_TOKEN"]
+    token = token or os.environ.get("GITLAB_TOKEN")
+    if not token:
+        raise RuntimeError(
+            "GITLAB_TOKEN is not set; required for the live Orbit query "
+            "(personal access token with api scope)."
+        )
     project_id = project_id or os.environ.get("GITLAB_PROJECT_ID") or os.environ.get("CI_PROJECT_ID")
 
     if mr_iid is None:

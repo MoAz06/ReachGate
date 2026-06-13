@@ -25,6 +25,11 @@ REASON_NO_DEFINITIONS = "no_definitions_indexed"
 REASON_NO_ENTRYPOINTS = "no_entrypoints"
 REASON_BOUNDS_HIT = "bounds_hit"
 REASON_API_ERROR = "api_error"
+# A path WAS found, but it was shorter than the configured policy.min_hops.
+# A found path proves reachability, so this can never be NOT_REACHABLE; the
+# operator asked us not to count sub-min_hops paths as REACHABLE, so the only
+# honest remaining verdict is UNKNOWN with an explicit reason.
+REASON_BELOW_MIN_HOPS = "below_min_hops"
 
 
 @dataclass
@@ -187,6 +192,10 @@ class GraphWalker:
 
         cert.strategies_attempted.append("graph_edges")
         outcomes: list[SearchOutcome] = []
+        # Set when a path is found but filtered out by policy.min_hops. A found
+        # path proves reachability, so this must never be allowed to fall
+        # through to NOT_REACHABLE (see REASON_BELOW_MIN_HOPS).
+        found_below_min_hops = False
         for entry in entry_files:
             outcome = self._search(entry, target_ids, self._config.policy.max_hops)
             outcomes.append(outcome)
@@ -200,6 +209,7 @@ class GraphWalker:
                 continue
             hops = len(path) - 1
             if hops < self._config.policy.min_hops:
+                found_below_min_hops = True
                 continue
             cert.evidence_modes.append("graph_edges")
             return ReachabilityResult(
@@ -224,6 +234,12 @@ class GraphWalker:
                 entry_path, definition_names, vuln_file, cert
             )
             if result:
+                # A found import path proves reachability. Apply the same
+                # min_hops policy gate as the graph-edges path so both
+                # evidence modes treat a sub-min_hops path identically.
+                if result.hops < self._config.policy.min_hops:
+                    found_below_min_hops = True
+                    continue
                 cert.evidence_modes.append("imported_symbol")
                 result.certificate = self._finalize(cert)
                 return result
@@ -231,8 +247,12 @@ class GraphWalker:
         # No path. NOT_REACHABLE is only honest when every walk ran to
         # completion (frontier exhausted, or a found-but-filtered path) and
         # no API call failed; otherwise the absence of a path proves nothing.
+        # A path that WAS found but filtered by min_hops proves reachability,
+        # so it can never be NOT_REACHABLE - it is UNKNOWN/below_min_hops.
         if cert.api_errors:
             evidence_reason = REASON_API_ERROR
+        elif found_below_min_hops:
+            evidence_reason = REASON_BELOW_MIN_HOPS
         elif cert.bounds_hit:
             evidence_reason = REASON_BOUNDS_HIT
         else:

@@ -131,6 +131,41 @@ def test_imported_symbol_fallback_finds_named_import():
     ]
 
 
+def test_found_path_below_min_hops_is_unknown_not_not_reachable():
+    """A path WAS found but is shorter than policy.min_hops.
+
+    A found path proves reachability, so the verdict must never be
+    NOT_REACHABLE. Before the fix this path was silently dropped and the
+    walk fell through to an (exhaustive) NOT_REACHABLE. It must now be an
+    explicit UNKNOWN/below_min_hops instead.
+    """
+    from src.reachgate.graph_walker import REASON_BELOW_MIN_HOPS
+
+    config = ReachGateConfig(
+        version="1",
+        entrypoint_patterns=["src/routes/**/*", "app.py"],
+        policy=PolicyConfig(min_hops=2, max_hops=10),
+    )
+    client = MagicMock()
+    client.get_definitions_for_file.return_value = [
+        {"id": "99", "name": "query", "file_path": "src/routes/users.py"}
+    ]
+    client.get_files_matching.return_value = [{"id": "1", "path": "src/routes/users.py"}]
+    client.get_imported_symbols.return_value = []
+    # A 1-hop path: entry file -> definition. 1 < min_hops(2).
+    strategy = _FakeStrategy([
+        PathNode(entity="File", node_id="1", label="src/routes/users.py"),
+        PathNode(entity="Definition", node_id="99", label="query"),
+    ])
+    walker = GraphWalker(client, config, strategy=strategy)
+    occ = {"location": json.dumps({"file": "src/routes/users.py", "start_line": 5})}
+    result = walker.check_reachability(occ)
+
+    # The path was found, so this is NOT an exhaustive no-path proof.
+    assert not result.reachable
+    assert result.evidence_reason == REASON_BELOW_MIN_HOPS
+
+
 def test_imported_symbol_fallback_rejects_wrong_module():
     """Same symbol name imported from a different module is not a path."""
     client = MagicMock()

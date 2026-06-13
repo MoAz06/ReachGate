@@ -105,6 +105,46 @@ def test_get_imported_symbols_names_columns_explicitly():
     assert "import_path" in columns
 
 
+def test_literal_needle_extracts_longest_glob_free_segment():
+    # Internal-wildcard globs must not be searched as literal substrings.
+    assert OrbitClient._literal_needle("cmd/**/main.*") == "main."
+    assert OrbitClient._literal_needle("src/routes/**/*") == "routes"
+    assert OrbitClient._literal_needle("app/controllers/**/*") == "controllers"
+    assert OrbitClient._literal_needle("app.py") == "app.py"
+    assert OrbitClient._literal_needle("server.ts") == "server.ts"
+    # No usable literal at all.
+    assert OrbitClient._literal_needle("**/*") == ""
+
+
+@respx.mock
+def test_get_files_matching_uses_literal_needle_not_raw_glob():
+    # Regression: "cmd/**/main.*" used to be sent as the literal substring
+    # "cmd/**/main." (matching nothing). It must now send a glob-free needle.
+    route = respx.post(QUERY_URL).mock(
+        return_value=httpx.Response(200, json={"result": {"nodes": [], "edges": []}, "row_count": 0})
+    )
+    _client().get_files_matching(["cmd/**/main.*", "src/routes/**/*"])
+
+    sent_needles = [
+        json.loads(c.request.content)["query"]["node"]["filters"]["path"]["value"]
+        for c in route.calls
+    ]
+    assert "main." in sent_needles
+    assert "routes" in sent_needles
+    # No raw glob characters leaked into any search value.
+    assert all("*" not in n for n in sent_needles)
+
+
+@respx.mock
+def test_get_files_matching_skips_patterns_without_usable_literal():
+    route = respx.post(QUERY_URL).mock(
+        return_value=httpx.Response(200, json={"result": {"nodes": [], "edges": []}, "row_count": 0})
+    )
+    # "**/*" has no >=3-char literal segment; it must be skipped, not sent.
+    _client().get_files_matching(["**/*"])
+    assert not route.called
+
+
 @respx.mock
 def test_get_status_hits_status_endpoint():
     route = respx.get("https://gitlab.com/api/v4/orbit/status").mock(
