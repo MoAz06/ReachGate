@@ -15,7 +15,7 @@ GitLab already has the missing ingredient: Orbit indexes the codebase as a knowl
 For each security finding, ReachGate:
 
 1. Queries Orbit for the finding's code location (`VulnerabilityOccurrence.location`)
-2. Walks the graph (CALLS and IMPORTS edges) from a declared entry point to the vulnerable definition using a bounded BFS over the `neighbors` query
+2. Walks the graph (DEFINES, IMPORTS, and CALLS edges) from a declared entry point to the vulnerable definition using a bounded BFS over the `neighbors` query
 3. A deterministic policy engine (transparent rule weights, no model score) returns a verdict:
    - **REACHABLE** — creates a GitLab work item, attaches the path as an auditable receipt
    - **NOT_REACHABLE** — deprioritizes, with evidence: every walk ran to completion (frontier exhausted) and found no path. An exhaustive negative, not a shrug.
@@ -72,7 +72,7 @@ The CI job additionally uploads `reachgate-receipts.json`: a machine-readable ar
 
 ## CI/CD integration
 
-Add ReachGate to your pipeline — it runs on every MR and posts a triage receipt automatically.
+Add ReachGate to your pipeline as an advisory MR triage job — it runs on every merge request and posts a deterministic triage receipt automatically. The bundled job is non-blocking (`allow_failure: true`) so it never blocks a merge on its own; the receipts and the `reachgate-receipts.json` artifact are gate-ready evidence you can wire into a blocking gate if you choose.
 
 ```yaml
 # .gitlab-ci.yml
@@ -180,7 +180,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, appl
 pytest
 ```
 
-123 tests covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, and the reachable/unreachable flip.
+170+ focused tests covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, and the reachable/unreachable flip.
 
 ## What we learned about Orbit
 

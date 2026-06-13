@@ -86,12 +86,14 @@ Record the first path found: `[entry_point_file, ..., vulnerable_definition]`.
   "node": {
     "id": "imp",
     "entity": "ImportedSymbol",
-    "columns": ["*"],
+    "columns": ["id", "file_path", "import_type", "import_path", "identifier_name", "identifier_alias"],
     "filters": {"file_path": {"op": "eq", "value": "<entry_point_file>"}}
   },
   "limit": 100
 }
 ```
+
+Name the columns explicitly: live Orbit rejects `columns: ["*"]` with a 400 `compile_error`.
 
 A row whose `identifier_name` matches a vulnerable definition name and whose `import_path` resolves to the vulnerable file is a valid 2-hop path: `entry_point_file -[NamedImport]-> vulnerable_definition`. Cite the `ImportedSymbol` node ID as evidence.
 

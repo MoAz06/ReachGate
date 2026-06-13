@@ -54,11 +54,13 @@ Andere hackathon-inzendingen (RiskSentry, CodeSheriff, DevGuard) gebruiken een L
 - Namespace: `gitlab-ai-hackathon/transcend/39037247`
 - Project ID: `83119911`
 - Rol: Developer + AI
-- GitHub repo: https://github.com/MoAz06/reachgate (MIT, lokaal: dit pad)
+- GitHub repo: https://github.com/MoAz06/ReachGate (MIT, lokaal: dit pad)
 
 ---
 
 ## 3. Directorystructuur
+
+> Interne snapshot; de test-lijst hieronder en in §9 is illustratief, niet exhaustief. Bron van waarheid voor het aantal/de inhoud is `pytest` (174 tests per 13 juni 2026).
 
 ```
 reachgate/
@@ -74,15 +76,16 @@ reachgate/
 │   └── config.py           # reachgate.yml loader + glob matcher
 │
 ├── agent/
-│   ├── system_prompt.md    # Systeem-prompt voor de gepubliceerde AI Catalog-agent
-│   └── skills/reachgate/   # Agent-skills definitie
+│   └── system_prompt.md    # Systeem-prompt voor de gepubliceerde AI Catalog-agent
+│
+├── skills/reachgate/       # Agent-skill definitie (/reachgate slash command)
 │
 ├── tools/
 │   ├── demo_e2e.py         # End-to-end demo tegen live Orbit (de "flip")
 │   ├── hunt_demo_target.py # Helper om demo-targets te vinden
 │   └── smoke_client.py     # Snelle smoke-test van de Orbit-verbinding
 │
-├── tests/                  # 123 tests (pytest + respx fixtures)
+├── tests/                  # 174 tests (pytest + respx fixtures)
 │   ├── fixtures/           # Vastgelegde live Orbit-responses (JSON)
 │   ├── test_artifact.py
 │   ├── test_certificate.py
@@ -429,8 +432,8 @@ python tools/demo_e2e.py
 **Demo-parameters (in demo_e2e.py):**
 - `MAX_ENTRYPOINTS = 2` - cap op entry points om het snel te houden
 - `MAX_VISITED = 40` - BFS-knopen cap
-- `MAX_SECONDS_PER_WALK = 60` - tijdslimiet per finding
-- `MAX_HOPS = 4` - beperkt voor de demo
+- `MAX_SECONDS_PER_WALK = 120` - tijdslimiet per finding (per walk; ~30s/walk gemeten, 2x marge)
+- `MAX_HOPS = 6` - beide demo-walks putten hun frontier uit rond hop 5, dus geen-pad = exhaustive NOT_REACHABLE (niet UNKNOWN)
 
 ---
 
@@ -457,7 +460,7 @@ De gepubliceerde agent in de GitLab AI Catalog (`AI > Agents > ReachGate`) heeft
 
 ## 9. Testdekking
 
-**123 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit). Draaien met:
+**174 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit, verdict→action routing, doctor en MR-triage error handling). Draaien met:
 ```bash
 pytest
 ```
@@ -530,7 +533,7 @@ ReachGate is zo goed als zijn `reachgate.yml`. Een onvolledige declaratie van en
 
 ### Verplicht voor inzending (voor 24 juni 14:00 ET)
 
-- [x] **README.md bijgewerkt** (11 juni) - 123 tests, Fase 1/2 live proof, CI/CD + live demo + skill secties toegevoegd.
+- [x] **README.md bijgewerkt** (11 juni) - 170+ tests, Fase 1/2 live proof, CI/CD + live demo + skill secties toegevoegd.
 - [x] **Live acties getest** (10 juni) - work item #2 via `tools/test_actions.py`; work item #3 via de live agent-run.
 - [x] **CI/CD pipeline** (11 juni) - `.gitlab-ci.yml`, MR !1/!2/!3 live proof groen.
 - [x] **Fase 2 MR-idempotency live bewezen** (11 juni) - MR !3: run 1 `created`, rerun `unchanged`, comment-count 2 -> 2, artifact opnieuw geupload, issue-count 6 -> 6.

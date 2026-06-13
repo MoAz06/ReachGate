@@ -30,7 +30,7 @@ Every receipt carries a collapsible **reachability certificate** — policy vers
 
 Three integrated layers, all running on live Orbit data:
 
-1. **Python engine** (`src/reachgate/`) — Orbit REST client, bounded BFS over `neighbors` queries with termination reporting (why each walk stopped), deterministic policy engine with three verdicts, reachability certificates, GitLab actions (work items, MR comments, JSON artifact). 123 tests.
+1. **Python engine** (`src/reachgate/`) — Orbit REST client, bounded BFS over `neighbors` queries with termination reporting (why each walk stopped), deterministic policy engine with three verdicts, reachability certificates, GitLab actions (work items, MR comments, JSON artifact). 170+ focused tests.
 2. **CI/CD integration** — `.gitlab-ci.yml` runs triage on every merge request, can load findings from a GitLab SAST report or native JSON, and posts fingerprint-idempotent receipt comments.
 3. **Agentic mode** — a ReachGate agent published in the GitLab AI Catalog, an Agent Skill (`/reachgate` slash command), and the Orbit MCP server wired into VS Code Duo Chat. The agent executes real `query_graph` calls, walks the graph live, applies the same fixed rules, and creates the work item itself.
 
