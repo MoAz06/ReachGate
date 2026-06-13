@@ -166,6 +166,67 @@ def test_found_path_below_min_hops_is_unknown_not_not_reachable():
     assert result.evidence_reason == REASON_BELOW_MIN_HOPS
 
 
+def test_imported_symbol_fallback_reachable_at_min_hops_one():
+    """min_hops=1: a 2-hop imported-symbol path is REACHABLE (parity case)."""
+    config = ReachGateConfig(
+        version="1",
+        entrypoint_patterns=["src/routes/**/*", "app.py"],
+        policy=PolicyConfig(min_hops=1, max_hops=10),
+    )
+    client = MagicMock()
+    client.get_definitions_for_file.return_value = [
+        {"id": "99", "name": "getArchivesVersions",
+         "file_path": "content/frontend/services/fetch_versions.js"}
+    ]
+    client.get_files_matching.return_value = [{"id": "1", "path": "src/routes/redirect.js"}]
+    client.get_imported_symbols.return_value = [
+        {
+            "identifier_name": "getArchivesVersions",
+            "import_path": "../../content/frontend/services/fetch_versions",
+            "import_type": "NamedImport",
+            "file_path": "src/routes/redirect.js",
+        }
+    ]
+    walker = GraphWalker(client, config, strategy=_FakeStrategy(None))
+    occ = {"location": json.dumps({"file": "content/frontend/services/fetch_versions.js"})}
+    result = walker.check_reachability(occ)
+    assert result.reachable
+    assert result.hops == 2
+
+
+def test_imported_symbol_fallback_below_min_hops_is_unknown():
+    """min_hops=3: the same 2-hop imported-symbol path proves reachability,
+    so it must be UNKNOWN/below_min_hops -- never NOT_REACHABLE. This covers
+    the parity gate added to the ImportedSymbol fallback in Fase 1.
+    """
+    from src.reachgate.graph_walker import REASON_BELOW_MIN_HOPS
+
+    config = ReachGateConfig(
+        version="1",
+        entrypoint_patterns=["src/routes/**/*", "app.py"],
+        policy=PolicyConfig(min_hops=3, max_hops=10),
+    )
+    client = MagicMock()
+    client.get_definitions_for_file.return_value = [
+        {"id": "99", "name": "getArchivesVersions",
+         "file_path": "content/frontend/services/fetch_versions.js"}
+    ]
+    client.get_files_matching.return_value = [{"id": "1", "path": "src/routes/redirect.js"}]
+    client.get_imported_symbols.return_value = [
+        {
+            "identifier_name": "getArchivesVersions",
+            "import_path": "../../content/frontend/services/fetch_versions",
+            "import_type": "NamedImport",
+            "file_path": "src/routes/redirect.js",
+        }
+    ]
+    walker = GraphWalker(client, config, strategy=_FakeStrategy(None))
+    occ = {"location": json.dumps({"file": "content/frontend/services/fetch_versions.js"})}
+    result = walker.check_reachability(occ)
+    assert not result.reachable
+    assert result.evidence_reason == REASON_BELOW_MIN_HOPS
+
+
 def test_imported_symbol_fallback_rejects_wrong_module():
     """Same symbol name imported from a different module is not a path."""
     client = MagicMock()

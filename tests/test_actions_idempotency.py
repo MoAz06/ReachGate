@@ -128,15 +128,28 @@ def test_multiple_matches_updates_newest_with_warning():
     respx.get(NOTES).mock(return_value=httpx.Response(200, json=[old, new]))
     put_new = respx.put(f"{NOTES}/200").mock(
         return_value=httpx.Response(200, json={"id": 200}))
-    delete = respx.delete(f"{NOTES}/100").mock(
-        return_value=httpx.Response(200, json={}))
+    # Mock the older note's PUT too, so we can prove it is NEVER updated
+    # (only the newest is), rather than just relying on routing.
+    put_old = respx.put(f"{NOTES}/100").mock(
+        return_value=httpx.Response(200, json={"id": 100}))
 
     res = _actions().upsert_mr_receipt(MR, _receipt(fingerprint="fp-new"))
     assert res["action"] == "updated"
     assert res["note_id"] == 200
     assert "warning" in res
+
+    # Only the newest note is updated; the older duplicate is left untouched.
     assert put_new.called
-    assert not delete.called  # never delete duplicates
+    assert not put_old.called
+
+    # Duplicate safety: prove NO HTTP DELETE was issued on ANY call, by
+    # inspecting every recorded request method (not just a mocked route).
+    methods = [call.request.method for call in respx.calls]
+    assert "DELETE" not in methods
+    # And exactly one PUT happened, against note 200.
+    put_urls = [str(call.request.url) for call in respx.calls
+                if call.request.method == "PUT"]
+    assert put_urls == [f"{NOTES}/200"]
 
 
 @respx.mock
