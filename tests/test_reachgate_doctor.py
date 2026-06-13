@@ -4,8 +4,10 @@ import httpx
 import pytest
 
 from src.reachgate.config import ReachGateConfig
+from src.reachgate.orbit_client import OrbitClient
 from tools.reachgate_doctor import (
     DoctorError,
+    _needle,
     check_pattern,
     main,
     render,
@@ -49,6 +51,20 @@ def _http_status_error(code):
 
 def _config(patterns):
     return ReachGateConfig(version="1", entrypoint_patterns=patterns)
+
+
+@pytest.mark.parametrize("pattern", [
+    "cmd/**/main.*",
+    "src/routes/**/*",
+    "app/controllers/**/*",
+    "app.py",
+    "server.ts",
+])
+def test_doctor_needle_matches_engine_literal_needle(pattern):
+    # The doctor's queryable gate and the engine's Orbit query MUST derive the
+    # same needle from a pattern; otherwise the doctor can claim a pattern is
+    # (un)queryable while get_files_matching does the opposite.
+    assert _needle(pattern) == OrbitClient._literal_needle(pattern)
 
 
 def test_check_pattern_confirms_against_glob_matcher():

@@ -21,6 +21,8 @@ import os
 import sys
 import time
 
+import httpx
+
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
@@ -30,7 +32,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from reachgate.actions import GitLabActions, render_receipt, write_artifact  # noqa: E402
 from reachgate.config import PolicyConfig, ReachGateConfig, load_config  # noqa: E402
-from reachgate.findings import load_findings  # noqa: E402
+from reachgate.findings import FindingsLoadError, load_findings  # noqa: E402
 from reachgate.graph_walker import GraphWalker  # noqa: E402
 from reachgate.orbit_client import OrbitClient  # noqa: E402
 from reachgate.path_strategy import BoundedBFS  # noqa: E402
@@ -84,16 +86,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = _parse_args(argv)
-    token = os.environ.get("GITLAB_TOKEN")
-    project_id = os.environ.get("GITLAB_PROJECT_ID") or os.environ.get("CI_PROJECT_ID")
-    mr_iid_raw = os.environ.get("GITLAB_MR_IID") or os.environ.get("CI_MERGE_REQUEST_IID")
-    if not token or not project_id or not mr_iid_raw:
-        print("Need GITLAB_TOKEN, CI_PROJECT_ID and CI_MERGE_REQUEST_IID.")
-        return 1
-    mr_iid = int(mr_iid_raw)
+def _run_triage(args, token: str, project_id: str, mr_iid: int) -> int:
+    """The live triage work: walk Orbit and upsert MR receipts.
 
+    May raise httpx.HTTPError (live Orbit/GitLab) or FindingsLoadError /
+    config errors (BYO mode). main() turns those into clean exit code 2.
+    """
     t0 = time.perf_counter()
     client = OrbitClient("https://gitlab.com", token)
     actions = GitLabActions("https://gitlab.com", token, project_id)
@@ -147,6 +145,40 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"[timing] total {time.perf_counter() - t0:.1f}s")
     return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+    token = os.environ.get("GITLAB_TOKEN")
+    project_id = os.environ.get("GITLAB_PROJECT_ID") or os.environ.get("CI_PROJECT_ID")
+    mr_iid_raw = os.environ.get("GITLAB_MR_IID") or os.environ.get("CI_MERGE_REQUEST_IID")
+    if not token or not project_id or not mr_iid_raw:
+        print("Need GITLAB_TOKEN, CI_PROJECT_ID and CI_MERGE_REQUEST_IID.")
+        return 1
+    mr_iid = int(mr_iid_raw)
+
+    # Turn live Orbit/GitLab failures and BYO input/config errors into one
+    # clean CI log line with a deliberate exit code 2 -- never a traceback.
+    try:
+        return _run_triage(args, token, project_id, mr_iid)
+    except httpx.HTTPStatusError as e:
+        code = e.response.status_code
+        hint = " (check GITLAB_TOKEN scope)" if code in (401, 403) else ""
+        print(f"mr_triage: GitLab/Orbit request failed: HTTP {code}{hint}",
+              file=sys.stderr)
+        return 2
+    except httpx.HTTPError as e:
+        # Connection / timeout / transport errors.
+        print(f"mr_triage: GitLab/Orbit request failed: {type(e).__name__}: {e}",
+              file=sys.stderr)
+        return 2
+    except FindingsLoadError as e:
+        print(f"mr_triage: could not load findings: {e}", file=sys.stderr)
+        return 2
+    except (FileNotFoundError, ValueError, KeyError, TypeError) as e:
+        # BYO config problems (missing/invalid reachgate.yml).
+        print(f"mr_triage: configuration error: {e}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

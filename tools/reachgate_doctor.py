@@ -36,11 +36,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import httpx  # noqa: E402 - already a dependency via orbit_client, no new dep
 
+from reachgate.orbit_client import OrbitClient as _OrbitClient  # noqa: E402
 from reachgate.config import ReachGateConfig, load_config  # noqa: E402
 from reachgate.orbit_client import OrbitClient  # noqa: E402
 
-# get_files_matching strips '*' and '/' then needs a >=3 char needle to query
-# Orbit's `contains` filter; anything shorter is silently skipped server-side.
+# OrbitClient.get_files_matching extracts the longest glob-free literal from a
+# pattern and needs a >=3 char needle to query Orbit's `contains` filter;
+# anything shorter is skipped. The doctor MUST use the same needle logic as the
+# engine so its "queryable" gate never contradicts what get_files_matching does.
 MIN_QUERYABLE_NEEDLE = 3
 
 
@@ -49,7 +52,11 @@ class DoctorError(Exception):
 
 
 def _needle(pattern: str) -> str:
-    return pattern.strip("*/")
+    # Single source of truth: the exact literal OrbitClient uses to query Orbit.
+    # Use the stable class alias (not the module-global OrbitClient, which
+    # tests monkeypatch to a fake constructor) so the needle logic always
+    # matches the engine.
+    return _OrbitClient._literal_needle(pattern)
 
 
 def check_pattern(
