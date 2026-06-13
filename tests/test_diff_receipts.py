@@ -105,3 +105,21 @@ def test_main_exit_zero_on_unchanged_with_flag(tmp_path):
     old = _write(tmp_path, "old.json", art)
     new = _write(tmp_path, "new.json", art)
     assert main([old, new, "--fail-on-new-reachable"]) == 0
+
+
+def test_main_missing_file_exits_two_with_clean_stdout(tmp_path, capsys):
+    new = _write(tmp_path, "new.json", _artifact())
+    assert main([str(tmp_path / "does_not_exist.json"), new]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "file not found" in captured.err
+
+
+def test_main_invalid_json_exits_two_with_clean_stdout(tmp_path, capsys):
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not valid json", encoding="utf-8")
+    new = _write(tmp_path, "new.json", _artifact())
+    assert main([str(bad), new]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "invalid JSON" in captured.err

@@ -33,9 +33,20 @@ from typing import Any
 REACHABLE = "REACHABLE"
 
 
+class InputError(Exception):
+    """A user-facing problem with an input artifact (missing / invalid JSON)."""
+
+
 def _load(path: str) -> dict[str, Any]:
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise InputError(f"file not found: {path}")
+    except IsADirectoryError:
+        raise InputError(f"not a file: {path}")
+    except json.JSONDecodeError as e:
+        raise InputError(f"invalid JSON in {path}: {e}")
 
 
 def _by_occurrence(artifact: dict[str, Any]) -> dict[str, dict]:
@@ -138,8 +149,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    old = _by_occurrence(_load(args.old_artifact))
-    new = _by_occurrence(_load(args.new_artifact))
+    try:
+        old = _by_occurrence(_load(args.old_artifact))
+        new = _by_occurrence(_load(args.new_artifact))
+    except InputError as e:
+        print(f"diff_receipts: {e}", file=sys.stderr)
+        return 2
 
     buckets = classify(old, new)
     for line in render(buckets, old, new):
