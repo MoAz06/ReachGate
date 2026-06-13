@@ -58,6 +58,33 @@ This is what "ReachGate never dresses up missing evidence as proof" means in
 practice. It demonstrates **one** UNKNOWN reason (`no_definitions_indexed`),
 not every possible UNKNOWN case.
 
+### Compare two receipt artifacts
+
+Receipts are also a security regression review. `tools/diff_receipts.py` diffs
+two `reachgate-receipts.json` artifacts, matching findings by their stable
+`occurrence_id` and comparing fingerprints:
+
+```bash
+python tools/diff_receipts.py docs/proof/mr2-reachgate-receipts.json docs/proof/mr3-reachgate-receipts-rerun.json
+```
+
+Because MR !2 and MR !3 fingerprint identically, both findings report as
+`UNCHANGED`:
+
+```text
+ReachGate receipt diff: UNCHANGED=2 CHANGED=0 NEW=0 REMOVED=0
+  = UNCHANGED demo-pathtraversal  verdict=NOT_REACHABLE basis=no_path_search_exhaustive fingerprint=d457ba33eef89e2e
+  = UNCHANGED demo-ssrf  verdict=REACHABLE basis=path_found fingerprint=8c2aeb6e2457adc7
+```
+
+Findings are bucketed `UNCHANGED` / `CHANGED` (different fingerprint, prints
+old → new verdict, basis, fingerprint) / `NEW` / `REMOVED`. It makes no
+assumptions about how many findings exist or which verdicts appear. Default
+exit is `0`; with `--fail-on-new-reachable` it exits `1` only when a finding
+became `REACHABLE` (a `NEW` reachable finding, or a `CHANGED` finding whose new
+verdict is `REACHABLE`). `UNKNOWN` and `NOT_REACHABLE` never count as
+reachable. Standard library only, no network, no token.
+
 ## 2. Live: the merge requests
 
 - **[MR !2](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/2)** — Phase 1 engine on live Orbit data: one `REACHABLE` receipt and one exhaustive `NOT_REACHABLE` receipt, each with a reachability certificate, plus the uploaded `reachgate-receipts.json` artifact.
