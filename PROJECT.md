@@ -509,7 +509,7 @@ De native Orbit-tools van de custom agent werken nergens (web Duo Chat noch VS C
 - MCP Dashboard ("GitLab: Show MCP Dashboard") toont status **connected**, transport http, 2 tools: `list_commands` en `invoke_command` (wrapper; `query_graph` en `get_graph_schema` zitten als commands binnen `invoke_command`).
 - Tools pre-approved via de dashboard (staat nu in `.gitlab/duo/mcp.json` als `approvedTools`).
 
-**Live agent-run bewijs (11 juni 2026):** Duo Chat agentic mode in VS Code laadde de `/reachgate` skill, voerde echte Orbit-queries uit via `invoke_command` (query_graph), corrigeerde zelf DSL-fouten via `get_query_dsl`, vond de link via een `ImportedSymbol` node (zie hieronder), produceerde het exacte receipt (REACHABLE, score 85), en maakte work item #3 aan in het hackathon-project. Volledige agentic E2E-flow werkt.
+**Live agent-run bewijs (11 juni 2026):** Duo Chat agentic mode in VS Code laadde de `/reachgate` skill, voerde echte Orbit-queries uit via `invoke_command` (query_graph), corrigeerde zelf DSL-fouten via `get_query_dsl`, vond de link via een `ImportedSymbol` node (zie hieronder), en produceerde het exacte receipt (REACHABLE, score 85). Work item #3 is gekoppeld aan deze gedocumenteerde live agentic run; claim die provenance alleen samen met de run-log of recording.
 
 **Belangrijke graafvondst:** voor de docs-site (JavaScript) heeft Orbit **geen IMPORTS/CALLS edges** tussen de relevante nodes; de import-relatie zit in `ImportedSymbol` nodes (`file_path`, `identifier_name`, `import_path`, `import_type=NamedImport`). SKILL.md heeft nu een fallback-stap die dit beschrijft. De Python-engine vond eerder wel een pad via neighbors - beide bewijsroutes zijn geldig.
 
@@ -534,12 +534,12 @@ ReachGate is zo goed als zijn `reachgate.yml`. Een onvolledige declaratie van en
 ### Verplicht voor inzending (voor 24 juni 14:00 ET)
 
 - [x] **README.md bijgewerkt** (11 juni) - 170+ tests, Fase 1/2 live proof, CI/CD + live demo + skill secties toegevoegd.
-- [x] **Live acties getest** (10 juni) - work item #2 via `tools/test_actions.py`; work item #3 via de live agent-run.
+- [x] **Live acties getest** (10 juni) - work item #2 via `tools/test_actions.py`; work item #3 gekoppeld aan de live agent-run (provenance alleen claimen met run-log/recording).
 - [x] **CI/CD pipeline** (11 juni) - `.gitlab-ci.yml`, MR !1/!2/!3 live proof groen.
 - [x] **Fase 2 MR-idempotency live bewezen** (11 juni) - MR !3: run 1 `created`, rerun `unchanged`, comment-count 2 -> 2, artifact opnieuw geupload, issue-count 6 -> 6.
 - [x] **Fase 2 proof assets opgeslagen** - screenshots in `docs/img/mr3-*.png`, artifact snapshot in `docs/proof/mr3-reachgate-receipts-rerun.json`.
 - [x] **Agentic E2E werkend** (11 juni) - Orbit MCP in VS Code + skill + agent, zie sectie 10.
-- [ ] **Demo-video opnemen** (<= 3 minuten) - NIEUW SCRIPT: open met de live agentic run in VS Code (agent voert Orbit-queries uit, maakt work item aan), daarna de Python-run (`tools/demo_e2e.py`) met de REACHABLE/NOT_REACHABLE flip, sluit af met CI-pipeline + work items.
+- [ ] **Demo-video opnemen** (<= 3 minuten) - huidig `SCRIPT.md`: open met het probleem + Orbit als graph evidence, maak MR !3 de hoofd-demo (REACHABLE/NOT_REACHABLE receipts, certificates, idempotente rerun, artifact), toon agentic mode alleen als korte `/reachgate`/Orbit MCP-flash, sluit af met proof gallery + offline verifier.
 - [ ] **Devpost-inzending** tekst schrijven en indienen op https://gitlab-transcend.devpost.com/
 - [ ] **`reachgate-test` en `schema-probe` agents verwijderen** uit de AI Catalog voor de inzending (throwaway-testobjecten).
 - [x] **GitHub repo bijgewerkt** - `origin/main` en `gitlab/main` synced op Fase 2 proof.
