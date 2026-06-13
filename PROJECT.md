@@ -17,7 +17,7 @@
 8. [Agent in de AI Catalog](#8-agent-in-de-ai-catalog)
 9. [Testdekking](#9-testdekking)
 10. [Bekende beperkingen en beslissingen](#10-bekende-beperkingen-en-beslissingen)
-11. [Wat nog gedaan moet worden](#11-wat-nog-gedaan-moet-worden)
+11. [Laatste submission-status](#11-laatste-submission-status)
 12. [Omgevingsvariabelen en draaien](#12-omgevingsvariabelen-en-draaien)
 
 ---
@@ -529,7 +529,7 @@ ReachGate is zo goed als zijn `reachgate.yml`. Een onvolledige declaratie van en
 
 ---
 
-## 11. Wat nog gedaan moet worden
+## 11. Laatste submission-status
 
 ### Verplicht voor inzending (voor 24 juni 14:00 ET)
 
@@ -539,16 +539,19 @@ ReachGate is zo goed als zijn `reachgate.yml`. Een onvolledige declaratie van en
 - [x] **Fase 2 MR-idempotency live bewezen** (11 juni) - MR !3: run 1 `created`, rerun `unchanged`, comment-count 2 -> 2, artifact opnieuw geupload, issue-count 6 -> 6.
 - [x] **Fase 2 proof assets opgeslagen** - screenshots in `docs/img/mr3-*.png`, artifact snapshot in `docs/proof/mr3-reachgate-receipts-rerun.json`.
 - [x] **Agentic E2E werkend** (11 juni) - Orbit MCP in VS Code + skill + agent, zie sectie 10.
+- [x] **GitHub repo bijgewerkt** - `origin/main` en `gitlab/main` synced.
 - [ ] **Demo-video opnemen** (<= 3 minuten) - huidig `SCRIPT.md`: open met het probleem + Orbit als graph evidence, maak MR !3 de hoofd-demo (REACHABLE/NOT_REACHABLE receipts, certificates, idempotente rerun, artifact), toon agentic mode alleen als korte `/reachgate`/Orbit MCP-flash, sluit af met proof gallery + offline verifier.
-- [ ] **Devpost-inzending** tekst schrijven en indienen op https://gitlab-transcend.devpost.com/
-- [ ] **`reachgate-test` en `schema-probe` agents verwijderen** uit de AI Catalog voor de inzending (throwaway-testobjecten).
-- [x] **GitHub repo bijgewerkt** - `origin/main` en `gitlab/main` synced op Fase 2 proof.
+- [ ] **Devpost-inzending afronden** - tekst uit `docs/DEVPOST.md`, echte video-URL invullen, dan indienen op https://gitlab-transcend.devpost.com/.
 
-### Optioneel / nice-to-have
+### Private pre-submit cleanup
 
-- [ ] `actions.py` live testen: werk item aanmaken in het hackathon-project om te bevestigen dat de labels en titels correct zijn.
-- [ ] `reachgate.yml` voor de demo-app bijwerken zodat de entry points matchen op de GitLab docs-site structuur.
-- [ ] `examples/demo-app/` uitbreiden met een echt voorbeeld van een `reachgate.yml` voor de docs-site.
+- [ ] **AI Catalog opruimen buiten de repo** - `reachgate-test` en `schema-probe` throwaway agents verwijderen indien ze nog zichtbaar zijn. Dit raakt geen product-code of proof-assets.
+
+### Backlog na de inzending
+
+- Blocking gate-mode uitwerken bovenop de huidige advisory MR triage (`allow_failure: true`).
+- Entry-point auto-suggesties uit Orbit onderzoeken als UX-upgrade.
+- Async/connection-pooling voor snellere grote graph walks.
 
 ---
 
