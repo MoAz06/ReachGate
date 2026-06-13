@@ -10,8 +10,8 @@ python tools/verify_proof.py
 ```
 
 Standard library only — no install, no network, no GitLab token. It reads the
-two receipt artifacts committed in this repo and checks they say exactly what
-the merge-request comments claim:
+captured proof artifacts committed in this repo and checks they say exactly
+what the merge-request comments and UNKNOWN receipt claim:
 
 - `docs/proof/mr2-reachgate-receipts.json` — the Phase 1 run (MR !2)
 - `docs/proof/mr3-reachgate-receipts-rerun.json` — the Phase 2 rerun (MR !3)
@@ -24,6 +24,7 @@ ReachGate proof verified
 - MR2: REACHABLE + NOT_REACHABLE receipts valid
 - MR3: same fingerprints on rerun (8c2aeb6e2457adc7, d457ba33eef89e2e)
 - NOT_REACHABLE is exhaustive: frontier exhausted, no bounds hit, API errors 0
+- UNKNOWN is honest: a real indexed file with no definitions yields insufficient_evidence, not fake-green
 - verifies captured artifacts offline; rerun the linked MRs for live proof
 ```
 
