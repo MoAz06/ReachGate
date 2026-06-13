@@ -337,7 +337,7 @@ policy:
 3. Voor elke occurrence: walker → evaluate → handle
 4. Retourneert een lijst met resultaten `[{occurrence, verdict, risk_score, action}, ...]`
 
-Kan ook als script: `python -m src.reachgate.agent`
+Kan ook als script (na `pip install -e ".[dev]"`): `python -m reachgate.agent`
 
 ---
 
@@ -578,7 +578,8 @@ python tools/demo_e2e.py
 ### Volledige engine draaien
 
 ```bash
-python -m src.reachgate.agent
+# na: pip install -e ".[dev]"
+python -m reachgate.agent
 ```
 
 ### Tests

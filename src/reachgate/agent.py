@@ -59,4 +59,11 @@ def run(
 
 if __name__ == "__main__":
     import json
-    print(json.dumps(run(), indent=2))
+    import sys
+
+    try:
+        print(json.dumps(run(), indent=2))
+    except RuntimeError as e:
+        # e.g. missing GITLAB_TOKEN: print one clean line, no traceback.
+        print(f"reachgate: {e}", file=sys.stderr)
+        sys.exit(2)

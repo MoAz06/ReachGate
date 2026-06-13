@@ -138,17 +138,24 @@ The policy engine is transparent: `risk_score = sum of triggered rule weights`. 
 pip install -e ".[dev]"
 ```
 
-Set environment variables:
+Set environment variables (`GITLAB_TOKEN` is a PAT with `api` scope, `GITLAB_PROJECT_ID` is your project ID):
 
 ```bash
-GITLAB_TOKEN=<your-token>     # PAT with api scope
-GITLAB_PROJECT_ID=<project>   # your GitLab project ID
+# bash
+export GITLAB_TOKEN="glpat-xxxxx"
+export GITLAB_PROJECT_ID="<project>"
 ```
 
-Run (from the repository root):
+```powershell
+# PowerShell
+$env:GITLAB_TOKEN = "glpat-xxxxx"
+$env:GITLAB_PROJECT_ID = "<project>"
+```
+
+Run (after `pip install -e ".[dev]"`):
 
 ```bash
-python -m src.reachgate.agent
+python -m reachgate.agent
 ```
 
 ## Live demo
