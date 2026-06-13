@@ -34,6 +34,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+import httpx  # noqa: E402 - already a dependency via orbit_client, no new dep
+
 from reachgate.config import ReachGateConfig, load_config  # noqa: E402
 from reachgate.orbit_client import OrbitClient  # noqa: E402
 
@@ -95,10 +97,25 @@ def run_checks(
     config: ReachGateConfig,
     limit: int,
 ) -> list[dict]:
-    return [
-        check_pattern(client, config, pattern, limit)
-        for pattern in config.entrypoint_patterns
-    ]
+    """Query Orbit for every pattern.
+
+    Translates live Orbit/httpx failures (401/403 auth, network, timeout, or
+    any other API error) into a DoctorError so the caller can exit cleanly
+    with code 2 and no traceback. Runs to completion before any results are
+    printed, so a failure leaves no misleading partial output on stdout.
+    """
+    try:
+        return [
+            check_pattern(client, config, pattern, limit)
+            for pattern in config.entrypoint_patterns
+        ]
+    except httpx.HTTPStatusError as e:
+        code = e.response.status_code
+        hint = " (check GITLAB_TOKEN)" if code in (401, 403) else ""
+        raise DoctorError(f"Orbit query failed: HTTP {code}{hint}")
+    except httpx.HTTPError as e:
+        # Connection / timeout / transport errors.
+        raise DoctorError(f"Orbit query failed: {type(e).__name__}: {e}")
 
 
 def render(results: list[dict], limit: int) -> tuple[list[str], int]:
@@ -200,15 +217,16 @@ def main(argv: list[str] | None = None) -> int:
             raise DoctorError("--limit must be >= 0")
 
         config = _load_config_or_raise(args.config)
+        client = OrbitClient(args.gitlab_url, token)
+        # Query Orbit BEFORE printing anything: if auth/network fails, exit 2
+        # cleanly with no misleading partial success output on stdout.
+        results = run_checks(client, config, args.limit)
     except DoctorError as e:
         print(f"reachgate-doctor: {e}", file=sys.stderr)
         return 2
 
-    client = OrbitClient(args.gitlab_url, token)
-
     print(f"ReachGate doctor: checking {len(config.entrypoint_patterns)} "
           f"entrypoint pattern(s) against Orbit at {args.gitlab_url}")
-    results = run_checks(client, config, args.limit)
     lines, total_files = render(results, args.limit)
     for line in lines:
         print(line)

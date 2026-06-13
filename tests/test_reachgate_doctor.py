@@ -1,9 +1,16 @@
 import json
 
+import httpx
 import pytest
 
 from src.reachgate.config import ReachGateConfig
-from tools.reachgate_doctor import check_pattern, main, render, run_checks
+from tools.reachgate_doctor import (
+    DoctorError,
+    check_pattern,
+    main,
+    render,
+    run_checks,
+)
 
 
 class FakeClient:
@@ -20,6 +27,24 @@ class FakeClient:
         for p in patterns:
             out.extend({"path": path} for path in self._by_pattern.get(p, []))
         return out
+
+
+class RaisingClient:
+    """Stand-in whose Orbit query raises, like a live auth/network failure."""
+
+    def __init__(self, exc):
+        self._exc = exc
+
+    def get_files_matching(self, patterns):
+        raise self._exc
+
+
+def _http_status_error(code):
+    request = httpx.Request("POST", "https://gitlab.com/api/v4/orbit/query")
+    response = httpx.Response(code, request=request)
+    return httpx.HTTPStatusError(
+        f"HTTP {code}", request=request, response=response
+    )
 
 
 def _config(patterns):
@@ -145,3 +170,56 @@ def test_main_zero_matches_exits_one(monkeypatch, tmp_path):
     )
     _patch_client(monkeypatch, FakeClient({}))  # Orbit returns nothing
     assert main(["--config", str(cfg)]) == 1
+
+
+def test_run_checks_translates_http_status_error():
+    config = _config(["src/routes/**/*"])
+    client = RaisingClient(_http_status_error(401))
+    with pytest.raises(DoctorError) as exc:
+        run_checks(client, config, limit=20)
+    assert "401" in str(exc.value)
+
+
+def test_run_checks_translates_transport_error():
+    config = _config(["src/routes/**/*"])
+    client = RaisingClient(httpx.ConnectError("connection refused"))
+    with pytest.raises(DoctorError):
+        run_checks(client, config, limit=20)
+
+
+def _cfg_file(tmp_path):
+    cfg = tmp_path / "rg.yml"
+    cfg.write_text(
+        "version: '1'\nentrypoints:\n  files:\n    - 'src/routes/**/*'\n",
+        encoding="utf-8",
+    )
+    return str(cfg)
+
+
+def test_main_unauthorized_token_exits_two_clean(monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("GITLAB_TOKEN", "bad-token")
+    _patch_client(monkeypatch, RaisingClient(_http_status_error(401)))
+    assert main(["--config", _cfg_file(tmp_path)]) == 2
+    captured = capsys.readouterr()
+    # No traceback, clean stderr, and no misleading partial success on stdout.
+    assert captured.out == ""
+    assert "Orbit query failed" in captured.err
+    assert "401" in captured.err
+
+
+def test_main_forbidden_token_exits_two_clean(monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("GITLAB_TOKEN", "bad-token")
+    _patch_client(monkeypatch, RaisingClient(_http_status_error(403)))
+    assert main(["--config", _cfg_file(tmp_path)]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "403" in captured.err
+
+
+def test_main_network_error_exits_two_clean(monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("GITLAB_TOKEN", "fake-token")
+    _patch_client(monkeypatch, RaisingClient(httpx.ConnectError("refused")))
+    assert main(["--config", _cfg_file(tmp_path)]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Orbit query failed" in captured.err
