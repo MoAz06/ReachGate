@@ -60,7 +60,7 @@ Screenshots live in `docs/img/mr2-*.png` and `docs/img/mr3-*.png`; artifact snap
 
 ### Design choices
 
-- **You declare the attack surface.** `reachgate.yml` entry-point globs are the source of truth. ReachGate never guesses what is externally reachable; an incomplete declaration produces false negatives by design.
+- **You declare the attack surface.** `reachgate.yml` entry-point globs are the source of truth. ReachGate never guesses what is externally reachable; an incomplete declaration produces false negatives by design. `python tools/reachgate_doctor.py` pre-flights that declaration against live Orbit so a glob matching zero indexed files is caught before it becomes a silent false negative.
 - **Receipts, not scores.** Every verdict ships with the graph path (visual Mermaid diagram + plaintext for audit), the triggered rules, their fixed weights, and a reachability certificate documenting how the search ran.
 - **NOT_REACHABLE must be earned.** It is only claimed after an exhaustive walk (frontier empty, no bounds hit, no API errors). Anything less is `UNKNOWN` with the exact reason.
 - **MR comments are idempotent.** The CI path is comment-only and keyed by stable receipt fingerprints, so rerunning the same pipeline does not duplicate reviewer noise. Work-item creation remains in the agent/action escalation path.

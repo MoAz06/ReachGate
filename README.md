@@ -49,6 +49,19 @@ entrypoints:
 
 ReachGate never guesses what is reachable from the outside. You declare the boundary; the engine enforces it.
 
+## Validate your attack surface
+
+A declared entry point that matches **zero** indexed files is the most dangerous failure mode: ReachGate would walk from nowhere and report `NOT_REACHABLE` for everything, a silent false negative caused by a bad glob rather than by safe code. `tools/reachgate_doctor.py` is a one-command pre-flight that catches exactly that before you trust any verdict:
+
+```bash
+export GITLAB_TOKEN="glpat-xxxxx"
+python tools/reachgate_doctor.py --config reachgate.yml
+```
+
+For each `entrypoints.files` pattern it queries live Orbit, confirms the returned paths against the exact glob matcher, and reports how many indexed files match (with sample paths, capped by `--limit`). It exits `0` if at least one entry point matched, `1` if the config loaded but nothing matched (so `NOT_REACHABLE` evidence cannot be trusted yet), and `2` on an auth/config error.
+
+It validates that your declared globs match files Orbit has indexed. It does **not** prove the attack surface is complete and it does not infer or suggest entry points: you still own that definition.
+
 ## Every verdict carries a certificate
 
 A verdict without a record of how the search ran is just an assertion. Each receipt ships with a collapsible **reachability certificate**: the policy version (a hash of the rule weights and threshold), the search bounds (`max_hops`, `max_visited`, `max_seconds`), how many entry points were checked, how many nodes were visited, how many Orbit API calls it cost, which evidence modes produced the verdict (graph edges or `ImportedSymbol` fallback), and whether any bound cut the walk short.
