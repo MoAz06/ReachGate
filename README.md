@@ -17,7 +17,7 @@ For each security finding, ReachGate:
 1. Queries Orbit for the finding's code location (`VulnerabilityOccurrence.location`)
 2. Walks the graph (DEFINES, IMPORTS, and CALLS edges) from a declared entry point to the vulnerable definition using a bounded BFS over the `neighbors` query
 3. A deterministic policy engine (transparent rule weights, no model score) returns a verdict:
-   - **REACHABLE** — creates a GitLab work item, attaches the path as an auditable receipt
+   - **REACHABLE** — posts an auditable receipt with the graph path; in MR triage this is a comment, while action/agent escalation can create a work item
    - **NOT_REACHABLE** — deprioritizes, with evidence: every walk ran to completion (frontier exhausted) and found no path. An exhaustive negative, not a shrug.
    - **UNKNOWN** — the evidence was insufficient (no code location, nothing indexed, no entry points resolved, search bounds hit, or an API error). ReachGate never dresses up a cut-off search as proof of unreachability.
 4. Posts a receipt (graph path + rule breakdown + score + reachability certificate) as a work item or MR comment — including a Mermaid diagram of the path that GitLab renders inline:
@@ -101,7 +101,7 @@ python tools/verify_proof.py
 
 It checks the captured receipt artifacts below against the verdicts the MR
 comments claim — matching fingerprints across MR !2 and MR !3, exhaustive
-`NOT_REACHABLE`, zero API errors. See [docs/JUDGE_REPLAY.md](docs/JUDGE_REPLAY.md) for the two-minute replay.
+`NOT_REACHABLE`, honest `UNKNOWN`, and zero API errors. See [docs/JUDGE_REPLAY.md](docs/JUDGE_REPLAY.md) for the two-minute replay.
 
 To compare two receipt artifacts as a security regression review, run `python tools/diff_receipts.py OLD NEW` (optionally with `--fail-on-new-reachable`).
 
@@ -179,7 +179,7 @@ ReachGate also runs fully agentically inside VS Code: the [Agent Skill](https://
 2. The Orbit MCP server is preconfigured in `.gitlab/duo/mcp.json` — approve it in **GitLab: Show MCP Dashboard**
 3. Ask Duo Chat to `/reachgate` a finding
 
-The agent executes real `query_graph` calls against Orbit, walks the graph, applies the same fixed rule weights as the Python engine, and creates the work item — live. The ReachGate agent published in the GitLab AI Catalog carries the same workflow.
+The agent executes real `query_graph` calls against Orbit, walks the graph, and applies the same fixed rule weights as the Python engine. If the Duo/VS Code run log or recording is on screen, work item #3 can be shown as the documented agentic-run output; otherwise keep the claim to the `/reachgate` skill plus Orbit MCP workflow.
 
 ## Tests
 

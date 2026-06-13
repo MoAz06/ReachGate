@@ -1,9 +1,11 @@
 # Judge Replay Kit
 
-Verify ReachGate in about two minutes. Two ways: a one-command offline check
+Verify ReachGate in about two minutes. Two ways: a copy-paste offline check
 of the captured artifacts, and the live merge requests you can re-run yourself.
 
 ## 1. Offline: verify the captured artifacts (no setup, no token)
+
+From the repo root, run:
 
 ```bash
 python tools/verify_proof.py
@@ -35,7 +37,7 @@ Exit code is `0` on success, non-zero if any check fails.
 | Check | Why it matters |
 |---|---|
 | `schema_version == 1.0`, exactly 2 findings | The artifact is the real machine-readable receipt, not prose. |
-| Verdicts are `REACHABLE` + `NOT_REACHABLE` | Same scanner severity class, opposite triage outcomes — the core idea. |
+| Verdicts are `REACHABLE` + `NOT_REACHABLE` | Same pipeline / same Orbit graph, opposite triage outcomes — the core idea. |
 | `verdict_basis` is `path_found` / `no_path_search_exhaustive` | The verdict carries its reason; `no_path_search_exhaustive` is the honesty claim. |
 | `api_errors == 0`, no bound hit, `frontier_exhausted == true` | `NOT_REACHABLE` is an exhaustive negative within bounds, not a cut-off search dressed up as proof. |
 | Fingerprints identical across MR !2 and MR !3 | The same finding fingerprints the same way, which is what makes MR triage idempotent (reruns update in place, never duplicate). |
