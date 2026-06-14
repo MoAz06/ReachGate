@@ -33,10 +33,24 @@ def _glob_match(path: str, pattern: str) -> bool:
     while i < len(parts):
         part = parts[i]
         if part == "**":
-            # **/  means zero or more directory components (absorb trailing slash)
-            if i + 1 < len(parts) and parts[i + 1] == "/":
-                regex += "(?:.*/)??"
+            # `**/` means zero or more directory components, so it must also
+            # match zero directories (e.g. `cmd/**/main.*` matches both
+            # `cmd/main.go` and `cmd/x/main.go`). The directory separator may
+            # be its own split part (`"/"`) or the leading character of the
+            # following literal (`"/main."`); handle both so the zero-dir case
+            # is never lost.
+            nxt = parts[i + 1] if i + 1 < len(parts) else None
+            if nxt == "/":
+                # Separator is its own part: make the whole `**/` optional.
+                regex += "(?:.*/)?"
                 i += 2
+            elif nxt is not None and nxt.startswith("/"):
+                # Separator is glued to the next literal: emit the optional
+                # `**/` here and re-inject the literal without its leading
+                # slash so the slash is not required twice.
+                regex += "(?:.*/)?"
+                parts[i + 1] = nxt[1:]
+                i += 1
             else:
                 regex += ".*"
                 i += 1
