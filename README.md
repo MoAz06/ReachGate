@@ -211,7 +211,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 pytest
 ```
 
-212 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), and the judge-proof page generator.
+229 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), and the judge-proof page generator.
 
 ## Orbit Notes
 

@@ -60,7 +60,7 @@ Andere hackathon-inzendingen (RiskSentry, CodeSheriff, DevGuard) gebruiken een L
 
 ## 3. Directorystructuur
 
-> Interne snapshot; de test-lijst hieronder en in §9 is illustratief, niet exhaustief. Bron van waarheid voor het aantal/de inhoud is `pytest` (214 tests per 14 juni 2026).
+> Interne snapshot; de test-lijst hieronder en in §9 is illustratief, niet exhaustief. Bron van waarheid voor het aantal/de inhoud is `pytest` (229 tests per 14 juni 2026).
 
 ```
 reachgate/
@@ -95,7 +95,7 @@ reachgate/
 │   ├── fonts/              # Self-hosted OFL fonts (Courier Prime, Spectral)
 │   └── proof/              # Captured artifacts incl. reachgate.openvex.json
 │
-├── tests/                  # 214 tests (pytest + respx fixtures)
+├── tests/                  # 229 tests (pytest + respx fixtures)
 │   ├── fixtures/           # Vastgelegde live Orbit-responses (JSON)
 │   ├── test_artifact.py
 │   ├── test_certificate.py
@@ -472,7 +472,7 @@ De gepubliceerde agent in de GitLab AI Catalog (`AI > Agents > ReachGate`) heeft
 
 ## 9. Testdekking
 
-**214 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit, verdict→action routing, doctor en MR-triage error handling, OpenVEX-export incl. de never-fake-green guard, en de judge-proof generator). Draaien met:
+**229 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit, verdict→action routing, doctor en MR-triage error handling, OpenVEX-export incl. de never-fake-green guard, en de judge-proof generator). Draaien met:
 ```bash
 pytest
 ```
