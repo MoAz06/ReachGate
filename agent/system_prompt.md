@@ -53,8 +53,13 @@ path or its documented absence.
    evidence is insufficient: no code location, no indexed definitions in the
    vulnerable file, no entry-point File nodes resolved, the walk was cut off by
    max_hops or a budget before its frontier was exhausted, or an Orbit query
-   failed. NOT_REACHABLE requires an exhaustive negative: every walk ran until
-   its frontier was empty, with zero query errors.
+   failed. One more case is UNKNOWN even though a path exists: if the only path
+   found is shorter than the configured min_hops, report UNKNOWN with basis
+   insufficient_evidence:below_min_hops. A found path still proves reachability,
+   so it is never NOT_REACHABLE; the operator asked not to count sub-min_hops
+   paths as REACHABLE, leaving UNKNOWN as the only honest verdict.
+   NOT_REACHABLE requires an exhaustive negative: every walk ran until its
+   frontier was empty, with zero query errors.
 
 6. Take action:
    - REACHABLE: create a work item titled "[ReachGate] Reachable: <finding name>",
