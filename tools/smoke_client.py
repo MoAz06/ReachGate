@@ -4,7 +4,7 @@ Exercises every client method end-to-end on a known-indexed file.
 
 Usage (PowerShell):
     $env:GITLAB_TOKEN = "glpat-xxxxx"
-    python scripts/smoke_client.py 2>&1 | clip
+    python tools/smoke_client.py 2>&1 | clip
 """
 
 from __future__ import annotations
