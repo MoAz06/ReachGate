@@ -70,6 +70,22 @@ Each receipt also carries a stable **fingerprint** — a hash over the finding i
 
 The CI job additionally uploads `reachgate-receipts.json`: a machine-readable artifact with every receipt, full certificate, and the active policy, so verdicts can be diffed, audited, and replayed outside GitLab.
 
+## Standards-aligned VEX export
+
+Most reachability tools ask you to trust a verdict. ReachGate makes the verdict portable: `tools/export_vex.py` turns the receipts into a standards-aligned [OpenVEX](https://github.com/openvex/spec/blob/main/OPENVEX-SPEC.md) document so downstream supply-chain tooling can consume the exploitability context machine-readably — not just as an MR comment.
+
+```bash
+python tools/export_vex.py   # writes docs/proof/reachgate.openvex.json
+```
+
+The mapping is deliberately conservative, because a VEX `not_affected` tells every downstream consumer to ignore a CVE:
+
+- **REACHABLE** → `affected` (with an `action_statement` naming the graph path)
+- **NOT_REACHABLE** → `not_affected` with justification `vulnerable_code_not_in_execute_path` — **only** when the search was genuinely exhaustive (frontier exhausted, 0 bounds hit, 0 API errors)
+- **UNKNOWN**, or any `NOT_REACHABLE` whose certificate shows a hit bound or API error → `under_investigation`, never `not_affected`
+
+That last rule is the point: ReachGate refuses to emit a clean VEX `not_affected` from a search that did not actually run to completion. VEX is conventionally a CVE/component (SCA) artifact, so CVE-bearing findings map cleanly while SAST/CWE-style findings are carried honestly as statements against the project as the product. `tools/verify_proof.py` cross-checks the exported VEX against the same receipts, so the VEX claim is falsifiable too.
+
 ## CI/CD integration
 
 Add ReachGate to your pipeline as an advisory MR triage job — it runs on every merge request and posts a deterministic triage receipt automatically. The bundled job is non-blocking (`allow_failure: true`) so it never blocks a merge on its own. The receipts and `reachgate-receipts.json` artifact are gate-ready evidence: `tools/diff_receipts.py --fail-on-new-reachable` can turn a receipt diff into a blocking check when you choose to enforce it. Any `NOT_REACHABLE` verdict remains scoped to the configured search bounds recorded in the certificate.
@@ -193,7 +209,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 pytest
 ```
 
-190 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, and the reachable/unreachable flip.
+212 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), and the judge-proof page generator.
 
 ## Orbit Notes
 
