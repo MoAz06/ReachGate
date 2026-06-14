@@ -88,8 +88,10 @@ By default the CI demo uses the two live GitLab docs-site findings below. For a 
 
 Live examples:
 
-- [MR !1](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/1) — the pipeline walked the Orbit graph and posted both verdicts as comments: the SSRF is REACHABLE (escalated to a work item in the original demo flow), the path traversal is NOT_REACHABLE. Same pipeline, same Orbit graph, opposite triage outcomes, on one merge request.
+- [MR !2](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/2) — Phase 1 live engine proof: the pipeline walked the Orbit graph and posted both verdicts as comments, each with a reachability certificate. The SSRF is REACHABLE, the path traversal is exhaustively NOT_REACHABLE, and the run uploaded `reachgate-receipts.json` (captured in `docs/proof/mr2-reachgate-receipts.json`). Same pipeline, same Orbit graph, opposite triage outcomes, on one merge request.
 - [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) — live proof that MR triage is fingerprint-idempotent. The first run created two receipt comments; the rerun logged `unchanged` for both fingerprints, kept the comment count at 2, uploaded `reachgate-receipts.json` again, and created no work items from the MR flow.
+
+(MR !1 was the original early demo run; the canonical, verifiable proof lives in MR !2 and MR !3 above, which the offline verifier and `docs/proof/` are built on.)
 
 ## Proof gallery
 
@@ -187,7 +189,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 pytest
 ```
 
-170+ focused tests covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, and the reachable/unreachable flip.
+190 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, and the reachable/unreachable flip.
 
 ## Orbit Notes
 
