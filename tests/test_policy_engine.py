@@ -1,4 +1,7 @@
+import logging
+
 import pytest
+from src.reachgate import policy_engine
 from src.reachgate.graph_walker import ReachabilityResult
 from src.reachgate.policy_engine import evaluate, Verdict, REACHABLE_THRESHOLD
 
@@ -99,3 +102,36 @@ def test_same_finding_different_reachability_different_verdict():
     reachable_receipt = evaluate(_reachable(), occ)
     not_reachable_receipt = evaluate(_not_reachable(), occ)
     assert reachable_receipt.verdict != not_reachable_receipt.verdict
+
+
+def _broken_rule():
+    def _boom(result, occurrence):
+        raise RuntimeError("rule blew up")
+
+    return {
+        "name": "broken_rule",
+        "weight": 999,
+        "condition": _boom,
+        "reason": "should never trigger",
+    }
+
+
+def test_broken_rule_is_logged_not_silent(monkeypatch, caplog):
+    """A rule that raises must be surfaced via logging (H3), no longer silent."""
+    monkeypatch.setattr(policy_engine, "_RULES", policy_engine._RULES + [_broken_rule()])
+    with caplog.at_level(logging.ERROR, logger="src.reachgate.policy_engine"):
+        evaluate(_reachable(), _occurrence())
+    assert any(
+        "policy rule failed" in r.message.lower() and "broken_rule" in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_broken_rule_does_not_change_verdict(monkeypatch):
+    """The broken rule is skipped: verdict and score match the clean run."""
+    clean = evaluate(_reachable(), _occurrence())
+    monkeypatch.setattr(policy_engine, "_RULES", policy_engine._RULES + [_broken_rule()])
+    with_broken = evaluate(_reachable(), _occurrence())
+    assert with_broken.verdict == clean.verdict
+    assert with_broken.risk_score == clean.risk_score
+    assert "broken_rule" not in [r.name for r in with_broken.triggered_rules]
