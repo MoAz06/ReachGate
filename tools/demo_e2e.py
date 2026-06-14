@@ -60,20 +60,20 @@ MAX_HOPS = 6
 
 
 class TimedOrbitClient(OrbitClient):
-    """OrbitClient that prints one line per API call with elapsed time."""
+    """OrbitClient that prints one line per API call with elapsed time.
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.calls = 0
+    Reuses the base client's `api_calls` counter (incremented in
+    OrbitClient.query) instead of keeping a second, parallel counter, so the
+    printed numbers always match the count that lands in the certificate.
+    """
 
     def query(self, inner):
         t0 = time.perf_counter()
         out = super().query(inner)
-        self.calls += 1
         dt = time.perf_counter() - t0
         qt = inner.get("query_type", "?")
         rows = out.get("row_count", "?")
-        print(f"  [orbit #{self.calls:>3}] {qt:<10} {dt:5.2f}s  rows={rows}",
+        print(f"  [orbit #{self.api_calls:>3}] {qt:<10} {dt:5.2f}s  rows={rows}",
               flush=True)
         return out
 
@@ -116,7 +116,7 @@ def diagnose_resolution(client, importer_file, needle):
 def run_finding(client, strategy, entrypoints, finding, label):
     print(f"\n{'#' * 70}\n# {label}\n{'#' * 70}")
     t0 = time.perf_counter()
-    calls_before = client.calls
+    calls_before = client.api_calls
     config = ReachGateConfig(
         version="1",
         entrypoint_patterns=entrypoints,
@@ -127,7 +127,7 @@ def run_finding(client, strategy, entrypoints, finding, label):
     receipt = evaluate(result, finding)
     print(render_receipt(receipt))
     print(f"[timing] {label.split(':')[0]}: {time.perf_counter() - t0:.1f}s, "
-          f"{client.calls - calls_before} API calls", flush=True)
+          f"{client.api_calls - calls_before} API calls", flush=True)
 
 
 def main() -> int:
@@ -170,7 +170,7 @@ def main() -> int:
                 "Finding B: Path Traversal in scripts/create_issues.js (expect NOT_REACHABLE)")
 
     print(f"\n[timing] total: {time.perf_counter() - t_start:.1f}s, "
-          f"{client.calls} API calls")
+          f"{client.api_calls} API calls")
     return 0
 
 
