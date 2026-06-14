@@ -5,9 +5,11 @@ dist/
 build/
 .venv/
 .venv-wsl/
+.venv*/
 venv/
 .env
 *.env
 .pytest_cache/
+.pytest-tmp/
 .coverage
 htmlcov/
