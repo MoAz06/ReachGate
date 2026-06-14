@@ -81,6 +81,12 @@ def load_config(path: str | Path = "reachgate.yml") -> ReachGateConfig:
         min_hops=int(policy_raw.get("min_hops", 1)),
         max_hops=int(policy_raw.get("max_hops", 10)),
     )
+    if policy.min_hops < 1:
+        raise ValueError("reachgate.yml policy.min_hops must be >= 1")
+    if policy.max_hops < policy.min_hops:
+        raise ValueError(
+            "reachgate.yml policy.max_hops must be >= policy.min_hops"
+        )
 
     return ReachGateConfig(
         version=version,

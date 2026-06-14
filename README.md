@@ -72,7 +72,7 @@ The CI job additionally uploads `reachgate-receipts.json`: a machine-readable ar
 
 ## CI/CD integration
 
-Add ReachGate to your pipeline as an advisory MR triage job — it runs on every merge request and posts a deterministic triage receipt automatically. The bundled job is non-blocking (`allow_failure: true`) so it never blocks a merge on its own; the receipts and the `reachgate-receipts.json` artifact are gate-ready evidence you can wire into a blocking gate if you choose.
+Add ReachGate to your pipeline as an advisory MR triage job — it runs on every merge request and posts a deterministic triage receipt automatically. The bundled job is non-blocking (`allow_failure: true`) so it never blocks a merge on its own. The receipts and `reachgate-receipts.json` artifact are gate-ready evidence: `tools/diff_receipts.py --fail-on-new-reachable` can turn a receipt diff into a blocking check when you choose to enforce it. Any `NOT_REACHABLE` verdict remains scoped to the configured search bounds recorded in the certificate.
 
 ```yaml
 # .gitlab-ci.yml
@@ -201,11 +201,13 @@ Building ReachGate surfaced Orbit behavior that is not in the docs:
 - **Imports are not always edges.** For JavaScript, Orbit can index import relationships as `ImportedSymbol` *nodes* (`file_path`, `identifier_name`, `import_path`, `import_type`) rather than IMPORTS/CALLS edges. ReachGate's skill and engine both treat a matching `ImportedSymbol` as first-class path evidence.
 - **The Orbit MCP server wraps tools.** `https://gitlab.com/api/v4/orbit/mcp` exposes `list_commands` + `invoke_command`; `query_graph` and `get_graph_schema` live inside `invoke_command`. The config in `.gitlab/duo/mcp.json` requires an explicit `"type": "http"` field.
 
-## Honest scope
+## Scope & limits
 
-Path accuracy depends on Orbit's indexing depth for the target language. The entry-point config is the source of truth for what counts as the attack surface — an incomplete `reachgate.yml` produces false negatives by design: ReachGate never guesses the attack surface.
+- The attack surface comes from `reachgate.yml`. ReachGate never guesses what is externally reachable, so incomplete entry-point globs can produce false negatives; run `tools/reachgate_doctor.py` before trusting verdicts on a new project.
+- Path accuracy depends on Orbit's indexing depth and language coverage for the target repository. The `ImportedSymbol` fallback handles import relationships that Orbit exposes as nodes, but language coverage still depends on what Orbit indexes.
+- `NOT_REACHABLE` is only claimed within the configured search bounds recorded in the certificate: every walk ran until its frontier was empty, within bounds, with zero API errors. Anything less — a hop limit, a node budget, a timeout, a failed query — is reported as `UNKNOWN` with the exact reason in the receipt.
+- The current Orbit client is synchronous; async requests and connection pooling are future work for larger deployments.
 
-`NOT_REACHABLE` is only claimed when the search is an exhaustive negative: every walk ran until its frontier was empty, within bounds, with zero API errors. Anything less — a hop limit, a node budget, a timeout, a failed query — is reported as `UNKNOWN` with the exact reason in the receipt.
 
 ## License
 

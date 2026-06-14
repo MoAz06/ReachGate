@@ -31,6 +31,46 @@ def test_policy_defaults():
     assert cfg.policy.max_hops >= cfg.policy.min_hops
 
 
+def _write_config(tmp_path, policy):
+    path = tmp_path / "reachgate.yml"
+    path.write_text(
+        "\n".join([
+            'version: "1"',
+            "entrypoints:",
+            "  files:",
+            '    - "app.py"',
+            "policy:",
+            f"  min_hops: {policy['min_hops']}",
+            f"  max_hops: {policy['max_hops']}",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    return path
+
+
+@pytest.mark.parametrize(
+    "policy, message",
+    [
+        ({"min_hops": 0, "max_hops": 10}, "policy.min_hops must be >= 1"),
+        ({"min_hops": -1, "max_hops": 10}, "policy.min_hops must be >= 1"),
+        (
+            {"min_hops": 4, "max_hops": 3},
+            "policy.max_hops must be >= policy.min_hops",
+        ),
+    ],
+)
+def test_invalid_policy_bounds_raise(tmp_path, policy, message):
+    with pytest.raises(ValueError, match=message):
+        load_config(_write_config(tmp_path, policy))
+
+
+def test_valid_custom_policy_bounds_load(tmp_path):
+    cfg = load_config(_write_config(tmp_path, {"min_hops": 2, "max_hops": 4}))
+    assert cfg.policy.min_hops == 2
+    assert cfg.policy.max_hops == 4
+
+
 # --- Glob matching ---------------------------------------------------------
 #
 # `**/` means "zero or more directory components", so it MUST also match zero
