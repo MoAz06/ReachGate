@@ -119,6 +119,7 @@ These weights are fixed. Do not alter them or invent new rules.
 | `insufficient_evidence:no_entrypoints` | no entry-point File nodes resolved |
 | `insufficient_evidence:bounds_hit` | the walk was cut off by max_hops or a node/time budget before the frontier was exhausted |
 | `insufficient_evidence:api_error` | an Orbit query failed during the walk |
+| `insufficient_evidence:below_min_hops` | a path WAS found but is shorter than the configured `policy.min_hops`; a found path proves reachability, so this is never NOT_REACHABLE, but the operator asked not to count sub-`min_hops` paths as REACHABLE |
 
 `NOT_REACHABLE` requires an exhaustive negative: every walk ran until its frontier was empty, within bounds, with zero query errors. Its basis is `no_path_search_exhaustive`.
 
