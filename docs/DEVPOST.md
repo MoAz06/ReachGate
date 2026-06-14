@@ -30,7 +30,7 @@ Every receipt carries a collapsible **reachability certificate** — policy vers
 
 Three integrated layers, all running on live Orbit data:
 
-1. **Python engine** (`src/reachgate/`) — Orbit REST client, bounded BFS over `neighbors` queries with termination reporting (why each walk stopped), deterministic policy engine with three verdicts, reachability certificates, GitLab actions (work items, MR comments, JSON artifact). 190 focused tests.
+1. **Python engine** (`src/reachgate/`) — Orbit REST client, bounded BFS over `neighbors` queries with termination reporting (why each walk stopped), deterministic policy engine with three verdicts, reachability certificates, GitLab actions (work items, MR comments, JSON artifact), and a standards-aligned OpenVEX export. 214 focused tests.
 2. **CI/CD integration** — `.gitlab-ci.yml` runs triage on every merge request, can load findings from a GitLab SAST report or native JSON, and posts fingerprint-idempotent receipt comments.
 3. **Agentic mode** — a ReachGate agent published in the GitLab AI Catalog, an Agent Skill (`/reachgate` slash command), and the Orbit MCP server wired into VS Code Duo Chat. The documented live agentic run executes real `query_graph` calls, walks the graph live, applies the same fixed rules, and is linked as work item #3; I only claim that provenance when showing the run log or recording.
 
@@ -63,6 +63,7 @@ Screenshots live in `docs/img/mr2-*.png` and `docs/img/mr3-*.png`; artifact snap
 - **You declare the attack surface.** `reachgate.yml` entry-point globs are the source of truth. ReachGate never guesses what is externally reachable; an incomplete declaration produces false negatives by design. `python tools/reachgate_doctor.py` pre-flights that declaration against live Orbit so a glob matching zero indexed files is caught before it becomes a silent false negative.
 - **Receipts, not scores.** Every verdict ships with the graph path (visual Mermaid diagram + plaintext for audit), the triggered rules, their fixed weights, and a reachability certificate documenting how the search ran.
 - **NOT_REACHABLE must be earned.** It is only claimed after an exhaustive walk (frontier empty, no bounds hit, no API errors). Anything less is `UNKNOWN` with the exact reason.
+- **The evidence is portable and falsifiable.** `tools/export_vex.py` emits standards-aligned [OpenVEX](https://github.com/openvex/spec/blob/main/OPENVEX-SPEC.md) from the receipts: `REACHABLE` → `affected`, exhaustive `NOT_REACHABLE` → `not_affected` (justification `vulnerable_code_not_in_execute_path`), `UNKNOWN` → `under_investigation` — and **never** `not_affected` from a search that hit a bound or errored. `tools/verify_proof.py` cross-checks the exported VEX against the same receipts, so the VEX claim itself is verifiable. Most reachability tools ask you to trust a verdict; ReachGate ships evidence downstream supply-chain tooling can consume and check.
 - **MR comments are idempotent.** The CI path is comment-only and keyed by stable receipt fingerprints, so rerunning the same pipeline does not duplicate reviewer noise. Work-item creation remains in the agent/action escalation path.
 - **Three-step install.** Copy the CI job, set one token, declare entry points. Agentic mode: open the repo in VS Code, approve the preconfigured MCP server, type `/reachgate`.
 
