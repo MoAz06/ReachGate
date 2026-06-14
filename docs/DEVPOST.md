@@ -10,7 +10,7 @@ Scanners tell you a vulnerability exists. ReachGate proves whether it's reachabl
 
 ### The problem
 
-Security teams drown in scanner output, and most of it does not matter. Datadog's State of DevSecOps 2025 found that only 18% of vulnerabilities with a critical CVSS score remain critical once runtime and reachability context is applied. Four out of five "critical" findings are noise — but today, separating signal from noise is manual triage work that nobody has time for.
+Security teams drown in scanner output, and most of it does not matter. Datadog's State of DevSecOps 2025 found that just 18% of critical-CVSS vulnerabilities are still considered critical after applying contextual prioritization. Four out of five "critical" findings are noise — but today, separating signal from noise is manual triage work that nobody has time for.
 
 The missing question is always the same: **can an attacker actually reach this code?**
 
@@ -30,7 +30,7 @@ Every receipt carries a collapsible **reachability certificate** — policy vers
 
 Three integrated layers, all running on live Orbit data:
 
-1. **Python engine** (`src/reachgate/`) — Orbit REST client, bounded BFS over `neighbors` queries with termination reporting (why each walk stopped), deterministic policy engine with three verdicts, reachability certificates, GitLab actions (work items, MR comments, JSON artifact). 170+ focused tests.
+1. **Python engine** (`src/reachgate/`) — Orbit REST client, bounded BFS over `neighbors` queries with termination reporting (why each walk stopped), deterministic policy engine with three verdicts, reachability certificates, GitLab actions (work items, MR comments, JSON artifact). 190 focused tests.
 2. **CI/CD integration** — `.gitlab-ci.yml` runs triage on every merge request, can load findings from a GitLab SAST report or native JSON, and posts fingerprint-idempotent receipt comments.
 3. **Agentic mode** — a ReachGate agent published in the GitLab AI Catalog, an Agent Skill (`/reachgate` slash command), and the Orbit MCP server wired into VS Code Duo Chat. The documented live agentic run executes real `query_graph` calls, walks the graph live, applies the same fixed rules, and is linked as work item #3; I only claim that provenance when showing the run log or recording.
 
