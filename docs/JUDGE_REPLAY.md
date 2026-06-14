@@ -18,6 +18,7 @@ what the merge-request comments and UNKNOWN receipt claim:
 - `docs/proof/mr2-reachgate-receipts.json` — the Phase 1 run (MR !2)
 - `docs/proof/mr3-reachgate-receipts-rerun.json` — the Phase 2 rerun (MR !3)
 - `docs/proof/unknown-reachgate-receipt.json` — a live UNKNOWN capture (the third verdict)
+- `docs/proof/reachgate.openvex.json` — the exported OpenVEX, cross-checked against the receipts above
 
 Expected output:
 
@@ -27,6 +28,7 @@ ReachGate proof verified
 - MR3: same fingerprints on rerun (8c2aeb6e2457adc7, d457ba33eef89e2e)
 - NOT_REACHABLE is exhaustive: frontier exhausted, no bounds hit, API errors 0
 - UNKNOWN is honest: a real indexed file with no definitions yields insufficient_evidence, not fake-green
+- OpenVEX export matches the receipts: affected / not_affected (exhaustive only) / under_investigation, cross-checked
 - verifies captured artifacts offline; rerun the linked MRs for live proof
 ```
 
@@ -41,6 +43,7 @@ Exit code is `0` on success, non-zero if any check fails.
 | `verdict_basis` is `path_found` / `no_path_search_exhaustive` | The verdict carries its reason; `no_path_search_exhaustive` is the honesty claim. |
 | `api_errors == 0`, no bound hit, `frontier_exhausted == true` | `NOT_REACHABLE` is an exhaustive negative within bounds, not a cut-off search dressed up as proof. |
 | Fingerprints identical across MR !2 and MR !3 | The same finding fingerprints the same way, which is what makes MR triage idempotent (reruns update in place, never duplicate). |
+| OpenVEX statuses match the receipts | The exported `reachgate.openvex.json` says exactly what the receipts justify — `not_affected` only for an exhaustive `NOT_REACHABLE`, never for an `UNKNOWN` — so the VEX claim is falsifiable, not just asserted. |
 
 This checks the **captured** artifacts offline. It does not re-query GitLab.
 For live proof, re-run the pipelines on the merge requests below.
