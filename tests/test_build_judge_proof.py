@@ -63,6 +63,26 @@ def test_output_contains_proof_fingerprints_and_mr_links(tmp_path):
     assert build_judge_proof.MR3_URL in html
 
 
+def test_unknown_finding_renders_typed_actionable_panel(tmp_path):
+    """The captured UNKNOWN proof must render its typed guidance, derived from
+    verdict_basis (no new artifact fields)."""
+    output = tmp_path / "judge-proof.html"
+    proofs = build_judge_proof.load_proofs()
+    unknown = next(p for p in proofs if p["key"] == "unknown")
+    finding = unknown["data"]["findings"][0]
+    guidance = build_judge_proof.guidance_for_basis(finding["verdict_basis"])
+    assert guidance is not None
+
+    assert build_judge_proof.main(["--output", str(output)]) == 0
+    html = output.read_text(encoding="utf-8")
+
+    assert "unknown-panel" in html
+    assert "typed evidence gap" in html
+    assert f"UNKNOWN / {guidance.reason}" in html
+    assert guidance.meaning in html
+    assert guidance.next_action in html
+
+
 def _write_json(path, data):
     path.write_text(json.dumps(data), encoding="utf-8")
     return path

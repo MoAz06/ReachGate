@@ -14,6 +14,12 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# Single source of truth for UNKNOWN guidance. guidance.py is pure stdlib (no
+# third-party deps, no network), so importing it keeps this generator's
+# "standard library only" property while avoiding a second, drift-prone copy.
+sys.path.insert(0, str(REPO_ROOT / "src"))
+from reachgate.guidance import guidance_for_basis  # noqa: E402
 DEFAULT_OUTPUT = REPO_ROOT / "docs" / "judge-proof.html"
 
 MR2_URL = (
@@ -330,6 +336,28 @@ def _path_timeline(finding: dict) -> str:
     return f"<ol class=\"path-flow empty\">\n{''.join(items)}\n</ol>"
 
 
+def _unknown_guidance_panel(finding: dict) -> str:
+    """Typed, actionable panel for an UNKNOWN finding.
+
+    Derived from the finding's verdict_basis via the shared guidance table --
+    no new artifact fields. Makes UNKNOWN read as a typed evidence gap with a
+    concrete next action, not a shrug. Returns "" for non-UNKNOWN verdicts.
+    """
+    if finding.get("verdict") != "UNKNOWN":
+        return ""
+    guidance = guidance_for_basis(finding.get("verdict_basis"))
+    if guidance is None:
+        return ""
+    return f"""
+<section class="unknown-panel">
+  <p class="panel-label"><span>UNKNOWN / {_e(guidance.reason)}</span>
+    <span class="flowtip">typed evidence gap</span></p>
+  <p class="unknown-meaning">{_e(guidance.meaning)}</p>
+  <p class="unknown-action"><strong>Next action</strong> {_e(guidance.next_action)}</p>
+</section>
+"""
+
+
 def _summary_items(proofs: list[dict]) -> list[tuple[str, str, str]]:
     by_key = {proof["key"]: proof for proof in proofs}
     mr2_findings = _findings(by_key["mr2"])
@@ -475,6 +503,7 @@ def _entry_html(entry: dict) -> str:
       <strong>{_e(finding.get("risk_score"))}</strong>
       <span class="mono">{rules}</span></p>
   </section>
+  {_unknown_guidance_panel(finding)}
   <details class="evidence">
     <summary><span class="seal">&#9974;</span> certificate &amp; receipt
       <code>{_e(finding.get("fingerprint"))}</code></summary>
@@ -1074,6 +1103,20 @@ def render_page(proofs: list[dict]) -> str:
     .path-panel {{
       margin: 18px 0 4px; padding: 22px 18px 18px; position: relative;
       border: 1px solid var(--rule2); background: var(--paper2);
+    }}
+
+    /* ---- UNKNOWN: typed evidence gap, not a shrug ---- */
+    .unknown-panel {{
+      margin: 14px 0 4px; padding: 16px 18px;
+      border: 1.5px dashed var(--amber); background: var(--amber-bg);
+    }}
+    .unknown-panel .panel-label .flowtip {{ color: var(--amber); }}
+    .unknown-meaning {{ margin: 4px 0 10px; font-size: .96rem; }}
+    .unknown-action {{ margin: 0; font-size: .92rem; color: var(--ink); }}
+    .unknown-action strong {{
+      display: inline-block; margin-right: 8px; font-family: var(--mono);
+      font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--amber);
     }}
     .panel-label {{
       display: flex; gap: 10px; align-items: center; flex-wrap: wrap;

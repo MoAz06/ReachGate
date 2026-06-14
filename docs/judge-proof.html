@@ -356,6 +356,20 @@
       margin: 18px 0 4px; padding: 22px 18px 18px; position: relative;
       border: 1px solid var(--rule2); background: var(--paper2);
     }
+
+    /* ---- UNKNOWN: typed evidence gap, not a shrug ---- */
+    .unknown-panel {
+      margin: 14px 0 4px; padding: 16px 18px;
+      border: 1.5px dashed var(--amber); background: var(--amber-bg);
+    }
+    .unknown-panel .panel-label .flowtip { color: var(--amber); }
+    .unknown-meaning { margin: 4px 0 10px; font-size: .96rem; }
+    .unknown-action { margin: 0; font-size: .92rem; color: var(--ink); }
+    .unknown-action strong {
+      display: inline-block; margin-right: 8px; font-family: var(--mono);
+      font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--amber);
+    }
     .panel-label {
       display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
       font-family: var(--mono); font-size: .62rem; letter-spacing: .12em;
@@ -669,6 +683,7 @@
       <strong>85</strong>
       <span class="mono">path_exists +50, direct_import +20, high_severity +15</span></p>
   </section>
+  
   <details class="evidence">
     <summary><span class="seal">&#9974;</span> certificate &amp; receipt
       <code>8c2aeb6e2457adc7</code></summary>
@@ -722,6 +737,7 @@
       <strong>8</strong>
       <span class="mono">medium_severity +8</span></p>
   </section>
+  
   <details class="evidence">
     <summary><span class="seal">&#9974;</span> certificate &amp; receipt
       <code>d457ba33eef89e2e</code></summary>
@@ -775,6 +791,14 @@
       <strong>15</strong>
       <span class="mono">high_severity +15</span></p>
   </section>
+  
+<section class="unknown-panel">
+  <p class="panel-label"><span>UNKNOWN / no_definitions_indexed</span>
+    <span class="flowtip">typed evidence gap</span></p>
+  <p class="unknown-meaning">Orbit indexed the file but no callable definition to walk to.</p>
+  <p class="unknown-action"><strong>Next action</strong> Check Orbit indexing / language coverage for this file, or supply a code-level finding. Dependency/SCA findings with no reachable code definition stay UNKNOWN by design rather than fake-green.</p>
+</section>
+
   <details class="evidence">
     <summary><span class="seal">&#9974;</span> certificate &amp; receipt
       <code>f215d5e5e0d416e3</code></summary>
