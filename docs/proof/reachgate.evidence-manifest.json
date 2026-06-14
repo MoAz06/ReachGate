@@ -1,0 +1,53 @@
+{
+  "manifest_version": "1.0",
+  "description": "sha256 over ReachGate's machine-readable evidence artifacts (receipts, OpenVEX, SARIF). Standards-aligned, offline-verifiable. Excludes generated human views (e.g. judge-proof.html).",
+  "repo_commit_sha": "477ca010319317966957198777a97f0724dffdd5",
+  "policy_versions": [
+    "8eae9f21a3e6"
+  ],
+  "hash_algorithm": "sha256",
+  "artifact_count": 5,
+  "missing_count": 0,
+  "artifacts": [
+    {
+      "filename": "docs/proof/mr2-reachgate-receipts.json",
+      "type": "reachability-receipt",
+      "present": true,
+      "sha256": "f2f875165600729c08ad3617e844e28c2d26a52fd8986c239615f920631cd148",
+      "generation_command": "see docs/JUDGE_REPLAY.md (captured from MR !2)",
+      "verifier_command": "python tools/verify_proof.py"
+    },
+    {
+      "filename": "docs/proof/mr3-reachgate-receipts-rerun.json",
+      "type": "reachability-receipt",
+      "present": true,
+      "sha256": "60e83cefd12c7697b1cb87e29c7f82d2be1e5e42de5fb4c7ee785862122a7c52",
+      "generation_command": "see docs/JUDGE_REPLAY.md (captured from MR !3 rerun)",
+      "verifier_command": "python tools/verify_proof.py"
+    },
+    {
+      "filename": "docs/proof/unknown-reachgate-receipt.json",
+      "type": "reachability-receipt",
+      "present": true,
+      "sha256": "d193877ab2b08b20cbdc793ca977a6f4f95d29e0d8da4134ce9120353a80728c",
+      "generation_command": "see docs/JUDGE_REPLAY.md (captured UNKNOWN receipt)",
+      "verifier_command": "python tools/verify_proof.py"
+    },
+    {
+      "filename": "docs/proof/reachgate.openvex.json",
+      "type": "openvex",
+      "present": true,
+      "sha256": "1dd8eff0a5c05da9813b75d9868e6c1ee91332dc726a39fcb5a14ea56726240a",
+      "generation_command": "python tools/export_vex.py",
+      "verifier_command": "python tools/verify_proof.py"
+    },
+    {
+      "filename": "docs/proof/reachgate.sarif.json",
+      "type": "sarif",
+      "present": true,
+      "sha256": "66c329bc942a27d53d82cd932eb27609d2bf3726a5294a939c8b398ed327a16b",
+      "generation_command": "python tools/export_sarif.py",
+      "verifier_command": "python tools/verify_proof.py"
+    }
+  ]
+}
