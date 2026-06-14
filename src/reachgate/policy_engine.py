@@ -17,12 +17,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+import logging
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
 from .certificate import SearchCertificate, compute_fingerprint
 from .graph_walker import ReachabilityResult
+
+logger = logging.getLogger(__name__)
 
 
 class Verdict(str, Enum):
@@ -142,7 +145,14 @@ def evaluate(
                     )
                 )
         except Exception:
-            pass
+            # A broken rule is skipped (behaviour unchanged), but it must no
+            # longer vanish silently: surface it so a misconfigured rule can be
+            # caught. This is logging only -- no certificate, artifact, or
+            # fingerprint input changes, so verdicts and idempotency are intact.
+            logger.exception(
+                "ReachGate policy rule failed: %s",
+                rule.get("name", "<unknown>"),
+            )
 
     risk_score = sum(r.weight for r in triggered)
 
