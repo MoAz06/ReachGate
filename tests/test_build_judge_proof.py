@@ -39,6 +39,18 @@ def test_main_writes_temp_output(tmp_path):
     assert "risk_score = sum of triggered rule weights" in html
     assert "Verify it yourself" in html
     assert "nothing mocked" in html
+    # portable evidence section: the standout claim.
+    assert "Portable evidence" in html
+    assert "OpenVEX" in html
+    assert "SARIF 2.1.0" in html
+    assert "Evidence manifest" in html
+    assert "Offline verifier" in html
+    assert "docs/proof/reachgate.openvex.json" in html
+    assert "docs/proof/reachgate.sarif.json" in html
+    assert "docs/proof/reachgate.evidence-manifest.json" in html
+    # honesty guardrails: no overclaiming on the page.
+    assert "production-ready" not in html.lower()
+    assert "certified" not in html.lower()
     assert "+50" in html  # path_exists weight, shown in the policy table
     assert "<script src=" not in html
     assert "Mermaid" not in html

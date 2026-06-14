@@ -703,6 +703,79 @@ def _verify_panel(proofs: list[dict]) -> str:
 """
 
 
+def _portable_evidence_panel(proofs: list[dict]) -> str:
+    """The standout claim: ReachGate is an evidence layer, not just a scanner.
+
+    Every verdict on this page is also emitted as replayable, standards-aligned
+    evidence that downstream tools consume directly -- OpenVEX for CVE/SCA,
+    SARIF for SAST/code-flow, an evidence manifest for artifact integrity, and
+    an offline verifier for falsifiability. Pure description of the artifacts
+    these same receipts produce; no new metrics, no external assets.
+    """
+    cards = (
+        (
+            "OpenVEX",
+            "CVE / SCA evidence",
+            "docs/proof/reachgate.openvex.json",
+            "python tools/export_vex.py",
+            "REACHABLE \u2192 affected; an exhaustive NOT_REACHABLE \u2192 "
+            "not_affected (vulnerable_code_not_in_execute_path); UNKNOWN \u2192 "
+            "under_investigation. Never a clean not_affected from a search that "
+            "did not run to completion.",
+        ),
+        (
+            "SARIF 2.1.0",
+            "SAST / code-flow evidence",
+            "docs/proof/reachgate.sarif.json",
+            "python tools/export_sarif.py",
+            "REACHABLE carries the real graph walk as a codeFlow/threadFlow; "
+            "NOT_REACHABLE stays \u201cwithin configured search bounds\u201d; "
+            "UNKNOWN is a typed evidence gap, never presented as safe.",
+        ),
+        (
+            "Evidence manifest",
+            "artifact integrity",
+            "docs/proof/reachgate.evidence-manifest.json",
+            "python tools/build_evidence_manifest.py",
+            "sha256 over the machine-readable artifacts (receipts, OpenVEX, "
+            "SARIF) so a reviewer can confirm offline they are looking at the "
+            "exact evidence ReachGate produced.",
+        ),
+        (
+            "Offline verifier",
+            "falsifiability",
+            "python tools/verify_proof.py",
+            "python tools/verify_proof.py",
+            "Standard library only, no token, no network. Cross-checks the "
+            "OpenVEX and SARIF back against the receipts, so every exported "
+            "claim is falsifiable.",
+        ),
+    )
+    items = "".join(
+        f"""
+    <div class="pe-card">
+      <span class="pe-name">{_e(name)}</span>
+      <span class="pe-kind">{_e(kind)}</span>
+      <p class="pe-desc">{_e(desc)}</p>
+      <p class="pe-file mono">{_e(artifact)}</p>
+      <div class="cmd"><span class="caret">&rsaquo;</span> {_e(command)}</div>
+    </div>
+"""
+        for name, kind, artifact, command, desc in cards
+    )
+    return f"""
+<section class="portable">
+  <div class="section-head">
+    <h2>Portable evidence &mdash; not just a scanner</h2>
+    <p>The same receipts on this page are emitted as replayable, standards-aligned
+    evidence that downstream tooling consumes directly. Advisory by default;
+    the deterministic engine decides, the AI only explains.</p>
+  </div>
+  <div class="portable-grid">{items}</div>
+</section>
+"""
+
+
 def render_page(proofs: list[dict]) -> str:
     validate_proofs(proofs)
     entries = _proof_entries(proofs)
@@ -723,6 +796,7 @@ def render_page(proofs: list[dict]) -> str:
     logic = _logic_panel(proofs)
     policy = _policy_panel(proofs)
     verify = _verify_panel(proofs)
+    portable = _portable_evidence_panel(proofs)
     sections = []
     for verdict in VERDICT_ORDER:
         verdict_entries = [
@@ -1021,6 +1095,21 @@ def render_page(proofs: list[dict]) -> str:
     .cost strong {{ color: var(--red); }}
     .verify-links {{ font-family: var(--mono); font-size: .82rem; color: var(--ink2); margin: 0; }}
 
+    /* ---- portable evidence (the standout) ---- */
+    .portable {{ margin: 0 0 34px; }}
+    .portable-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }}
+    .pe-card {{
+      padding: 18px 18px 16px; background: var(--paper); border: 1px solid var(--rule2);
+      border-left: 4px solid var(--red); display: flex; flex-direction: column; gap: 8px;
+      box-shadow: 0 12px 24px -20px rgba(40,30,12,.7);
+    }}
+    .pe-name {{ font-family: var(--serif); font-size: 1.2rem; font-weight: 700; color: var(--ink); }}
+    .pe-kind {{ font-family: var(--mono); font-size: .62rem; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--dim); }}
+    .pe-desc {{ font-size: .9rem; line-height: 1.55; color: var(--ink); margin: 2px 0; }}
+    .pe-file {{ font-size: .72rem; color: var(--red); margin: 0; word-break: break-all; }}
+    .pe-card .cmd {{ margin: 4px 0 0; font-size: .78rem; }}
+
     .exhibits-head {{ margin: 40px 0 18px; padding-top: 18px; border-top: 2px solid var(--ink); }}
     .exhibits-head h2 {{ font-family: var(--serif); font-size: 1.6rem; font-weight: 700;
       color: var(--ink); margin: 0 0 8px; }}
@@ -1230,6 +1319,7 @@ def render_page(proofs: list[dict]) -> str:
     @media (max-width: 920px) {{
       .summary-strip {{ grid-template-columns: repeat(3, 1fr); }}
       .summary-strip li:nth-child(3) {{ border-right: none; }}
+      .portable-grid {{ grid-template-columns: 1fr; }}
       .flip {{ grid-template-columns: 1fr; }}
       .flip-vs {{ flex-direction: row; gap: 10px; padding: 12px;
         border-left: none; border-right: none;
@@ -1278,6 +1368,7 @@ def render_page(proofs: list[dict]) -> str:
     {flip}
     {logic}
     {policy}
+    {portable}
     {verify}
     <div class="exhibits-head">
       <h2>The exhibits</h2>
