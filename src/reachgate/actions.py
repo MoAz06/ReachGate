@@ -10,6 +10,7 @@ from typing import Any
 
 import httpx
 
+from .guidance import guidance_for_basis
 from .policy_engine import POLICY_VERSION, REACHABLE_THRESHOLD, PolicyReceipt, Verdict, _RULES
 
 ARTIFACT_SCHEMA_VERSION = "1.0"
@@ -263,6 +264,9 @@ def render_receipt(receipt: PolicyReceipt) -> str:
         "### Rule breakdown",
         breakdown or "No rules triggered.",
     ]
+    unknown_block = render_unknown_guidance(receipt)
+    if unknown_block:
+        lines += ["", unknown_block]
     cert_block = render_certificate(receipt)
     if cert_block:
         lines += ["", cert_block]
@@ -272,6 +276,30 @@ def render_receipt(receipt: PolicyReceipt) -> str:
         "Score = sum of rule weights, not a model confidence score.</sub>",
     ]
     return "\n".join(lines)
+
+
+def render_unknown_guidance(receipt: PolicyReceipt) -> str:
+    """Prominent block making an UNKNOWN verdict typed and actionable.
+
+    UNKNOWN is not a shrug: it is a typed evidence gap with a deterministic
+    next action. The guidance is static copy looked up from the receipt's
+    verdict_basis -- no engine logic, no new fields.
+    """
+    if receipt.verdict != Verdict.UNKNOWN:
+        return ""
+    guidance = guidance_for_basis(receipt.verdict_basis)
+    if guidance is None:
+        return ""
+    return "\n".join([
+        f"### \u26a0\ufe0f UNKNOWN / {guidance.reason}",
+        "",
+        f"**What this means:** {guidance.meaning}",
+        "",
+        f"**Next action:** {guidance.next_action}",
+        "",
+        "<sub>UNKNOWN is a typed evidence gap, not a claim of safety. "
+        "ReachGate never reports NOT_REACHABLE on incomplete evidence.</sub>",
+    ])
 
 
 def render_certificate(receipt: PolicyReceipt) -> str:

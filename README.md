@@ -20,6 +20,8 @@ For each security finding, ReachGate:
    - **REACHABLE** — posts an auditable receipt with the graph path; in MR triage this is a comment, while action/agent escalation can create a work item
    - **NOT_REACHABLE** — deprioritizes, with evidence: every walk ran to completion (frontier exhausted) and found no path. An exhaustive negative, not a shrug.
    - **UNKNOWN** — the evidence was insufficient (no code location, nothing indexed, no entry points resolved, search bounds hit, or an API error). ReachGate never dresses up a cut-off search as proof of unreachability.
+
+   UNKNOWN is not a shrug: every UNKNOWN carries a typed evidence reason and a deterministic next action, so dependency/SCA findings without a code anchor stay reviewable instead of being fake-greened.
 4. Posts a receipt (graph path + rule breakdown + score + reachability certificate) as a work item or MR comment — including a Mermaid diagram of the path that GitLab renders inline:
 
 ```mermaid

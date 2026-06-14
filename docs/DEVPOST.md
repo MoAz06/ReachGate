@@ -22,6 +22,8 @@ ReachGate answers that question with evidence. GitLab Orbit indexes the codebase
 - **No path, exhaustive search** → `NOT_REACHABLE`: deprioritized — every walk ran until its frontier was empty, within bounds, with zero API errors. An exhaustive negative, not a shrug.
 - **Insufficient evidence** → `UNKNOWN`: no code location, nothing indexed, no entry points, a search bound hit, or an API failure. ReachGate never dresses up a cut-off search as proof of unreachability.
 
+UNKNOWN is not a shrug: every UNKNOWN carries a typed evidence reason and a deterministic next action, so dependency/SCA findings without a code anchor stay reviewable instead of being fake-greened.
+
 The verdict is deterministic: `risk_score = sum of fixed rule weights` (path exists +50, direct import +20, high severity +15, medium +8; threshold 50). The model never decides — it only executes the steps and explains the receipt.
 
 Every receipt carries a collapsible **reachability certificate** — policy version hash, search bounds, nodes visited, API calls, evidence modes, and whether any bound cut the walk short — plus a stable **fingerprint** computed only from the finding identity, verdict, path, policy version, and declared attack surface (never timing or call counts). The MR CI job uses that fingerprint to upsert comments: reruns skip unchanged receipts instead of posting duplicates, while still uploading `reachgate-receipts.json` with every receipt and full certificate as a pipeline artifact.

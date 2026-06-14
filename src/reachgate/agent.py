@@ -79,6 +79,9 @@ def run(
         results.append({
             "occurrence": occ.get("name"),
             "verdict": receipt.verdict.value,
+            # Surface the typed basis, not just the verdict: an UNKNOWN is a
+            # typed evidence gap (insufficient_evidence:<reason>), not a shrug.
+            "basis": receipt.verdict_basis,
             "risk_score": receipt.risk_score,
             "action": outcome.get("action"),
         })
