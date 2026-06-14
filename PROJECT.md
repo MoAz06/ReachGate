@@ -460,7 +460,7 @@ De gepubliceerde agent in de GitLab AI Catalog (`AI > Agents > ReachGate`) heeft
 
 ## 9. Testdekking
 
-**174 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit, verdict→action routing, doctor en MR-triage error handling). Draaien met:
+**190 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit, verdict→action routing, doctor en MR-triage error handling). Draaien met:
 ```bash
 pytest
 ```
@@ -534,7 +534,7 @@ ReachGate is zo goed als zijn `reachgate.yml`. Een onvolledige declaratie van en
 ### Verplicht voor inzending (voor 24 juni 14:00 ET)
 
 - [x] **README.md bijgewerkt** (11 juni) - 170+ tests, Fase 1/2 live proof, CI/CD + live demo + skill secties toegevoegd.
-- [x] **Live acties getest** (10 juni) - work item #2 via `tools/test_actions.py`; work item #3 gekoppeld aan de live agent-run (provenance alleen claimen met run-log/recording).
+- [x] **Live acties getest** (10 juni) - work item #2 via `tools/live_actions_check.py` (destijds `tools/test_actions.py`); work item #3 gekoppeld aan de live agent-run (provenance alleen claimen met run-log/recording).
 - [x] **CI/CD pipeline** (11 juni) - `.gitlab-ci.yml`, MR !1/!2/!3 live proof groen.
 - [x] **Fase 2 MR-idempotency live bewezen** (11 juni) - MR !3: run 1 `created`, rerun `unchanged`, comment-count 2 -> 2, artifact opnieuw geupload, issue-count 6 -> 6.
 - [x] **Fase 2 proof assets opgeslagen** - screenshots in `docs/img/mr3-*.png`, artifact snapshot in `docs/proof/mr3-reachgate-receipts-rerun.json`.
