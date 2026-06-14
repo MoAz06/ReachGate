@@ -60,7 +60,7 @@ Andere hackathon-inzendingen (RiskSentry, CodeSheriff, DevGuard) gebruiken een L
 
 ## 3. Directorystructuur
 
-> Interne snapshot; de test-lijst hieronder en in §9 is illustratief, niet exhaustief. Bron van waarheid voor het aantal/de inhoud is `pytest` (174 tests per 13 juni 2026).
+> Interne snapshot; de test-lijst hieronder en in §9 is illustratief, niet exhaustief. Bron van waarheid voor het aantal/de inhoud is `pytest` (190 tests per 13 juni 2026).
 
 ```
 reachgate/
@@ -85,7 +85,7 @@ reachgate/
 │   ├── hunt_demo_target.py # Helper om demo-targets te vinden
 │   └── smoke_client.py     # Snelle smoke-test van de Orbit-verbinding
 │
-├── tests/                  # 174 tests (pytest + respx fixtures)
+├── tests/                  # 190 tests (pytest + respx fixtures)
 │   ├── fixtures/           # Vastgelegde live Orbit-responses (JSON)
 │   ├── test_artifact.py
 │   ├── test_certificate.py

@@ -77,7 +77,7 @@ Screenshots live in `docs/img/mr2-*.png` and `docs/img/mr3-*.png`; artifact snap
 
 - Repo (GitLab, MIT): https://gitlab.com/gitlab-ai-hackathon/transcend/39037247
 - Mirror (GitHub): https://github.com/MoAz06/ReachGate
-- Live MR with both verdicts posted by CI (the flip on one MR): https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/1
+- Live MR with both verdicts posted by CI (the flip on one MR): https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/2
 - Live MR proving idempotent MR triage reruns: https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3
 - MR !3 proof screenshots: `docs/img/mr3-overview-pipeline-passed.png`, `docs/img/mr3-pipelines-two-passed-runs.png`, `docs/img/mr3-job-unchanged-ssrf-log.png`, `docs/img/mr3-job-unchanged-pathtraversal-artifact-log.png`
 - MR !3 receipt artifact snapshot: `docs/proof/mr3-reachgate-receipts-rerun.json`
