@@ -30,6 +30,22 @@ def run(
     severity_filter: list[str] | None = None,
     max_seconds_per_walk: float | None = DEFAULT_MAX_SECONDS_PER_WALK,
 ) -> list[dict[str, Any]]:
+    """Run the ReachGate ESCALATION / action flow over live Orbit findings.
+
+    This is the action-taking entry point: each finding is walked, evaluated,
+    and passed to ``GitLabActions.handle()``. That means a ``REACHABLE`` verdict
+    here can create a GitLab issue / work item. When an MR is in scope
+    (``mr_iid`` argument, or ``GITLAB_MR_IID`` / ``CI_MERGE_REQUEST_IID`` in the
+    environment), this flow posts a PLAIN MR comment via ``handle()`` -- it does
+    NOT use the fingerprint-idempotent upsert, so rerunning it can create
+    duplicate comments and additional work items.
+
+    Do NOT use this for merge-request pipelines. The comment-only, idempotent
+    MR-CI flow is ``tools/mr_triage.py`` (it uses ``upsert_mr_receipt`` keyed by
+    a hidden per-finding marker, so reruns update in place and never create work
+    items). Use ``tools/mr_triage.py`` in merge-request CI; use ``agent.run()``
+    for the escalation/action flow (e.g. catalog/agent runs).
+    """
     gitlab_url = gitlab_url or os.environ.get("GITLAB_URL", "https://gitlab.com")
     token = token or os.environ.get("GITLAB_TOKEN")
     if not token:

@@ -337,6 +337,8 @@ policy:
 3. Voor elke occurrence: walker → evaluate → handle
 4. Retourneert een lijst met resultaten `[{occurrence, verdict, risk_score, action}, ...]`
 
+Dit is de **escalation/action-flow** (`handle()`): bij `REACHABLE` kan een work item worden aangemaakt, en als `mr_iid`/`GITLAB_MR_IID`/`CI_MERGE_REQUEST_IID` aanwezig is, wordt een **gewone** MR-comment geplaatst (niet de fingerprint-idempotente upsert). Voor merge-request pipelines is `tools/mr_triage.py` de juiste flow: comment-only en idempotent via `upsert_mr_receipt`. Gebruik `agent.run()` dus niet als MR-CI-flow.
+
 Kan ook als script (na `pip install -e ".[dev]"`): `python -m reachgate.agent`
 
 ---

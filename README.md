@@ -160,6 +160,8 @@ Run (after `pip install -e ".[dev]"`):
 python -m reachgate.agent
 ```
 
+`python -m reachgate.agent` runs the escalation / action flow: a `REACHABLE` finding can create a GitLab work item, and in MR context it posts a plain (non-idempotent) MR comment. For merge-request pipelines use the comment-only, fingerprint-idempotent flow in `tools/mr_triage.py` (the bundled CI job already does this).
+
 ## Live demo
 
 Reproduces the reachability flip on a real indexed project (GitLab docs-site):
