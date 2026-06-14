@@ -60,7 +60,7 @@ Andere hackathon-inzendingen (RiskSentry, CodeSheriff, DevGuard) gebruiken een L
 
 ## 3. Directorystructuur
 
-> Interne snapshot; de test-lijst hieronder en in §9 is illustratief, niet exhaustief. Bron van waarheid voor het aantal/de inhoud is `pytest` (190 tests per 13 juni 2026).
+> Interne snapshot; de test-lijst hieronder en in §9 is illustratief, niet exhaustief. Bron van waarheid voor het aantal/de inhoud is `pytest` (214 tests per 14 juni 2026).
 
 ```
 reachgate/
@@ -81,11 +81,21 @@ reachgate/
 ├── skills/reachgate/       # Agent-skill definitie (/reachgate slash command)
 │
 ├── tools/
-│   ├── demo_e2e.py         # End-to-end demo tegen live Orbit (de "flip")
-│   ├── hunt_demo_target.py # Helper om demo-targets te vinden
-│   └── smoke_client.py     # Snelle smoke-test van de Orbit-verbinding
+│   ├── demo_e2e.py          # End-to-end demo tegen live Orbit (de "flip")
+│   ├── verify_proof.py      # Offline replay van captured proof + VEX-kruischeck
+│   ├── export_vex.py        # OpenVEX-export uit receipts (standards-aligned)
+│   ├── build_judge_proof.py # Genereert docs/judge-proof.html uit docs/proof/*.json
+│   ├── diff_receipts.py     # Receipt-diff (regressie: --fail-on-new-reachable)
+│   ├── reachgate_doctor.py  # Pre-flight: entrypoint-globs vs live Orbit
+│   ├── hunt_demo_target.py  # Helper om demo-targets te vinden
+│   └── smoke_client.py      # Snelle smoke-test van de Orbit-verbinding
 │
-├── tests/                  # 190 tests (pytest + respx fixtures)
+├── docs/
+│   ├── judge-proof.html    # Offline bewijs-pagina (gegenereerd)
+│   ├── fonts/              # Self-hosted OFL fonts (Courier Prime, Spectral)
+│   └── proof/              # Captured artifacts incl. reachgate.openvex.json
+│
+├── tests/                  # 214 tests (pytest + respx fixtures)
 │   ├── fixtures/           # Vastgelegde live Orbit-responses (JSON)
 │   ├── test_artifact.py
 │   ├── test_certificate.py
@@ -462,7 +472,7 @@ De gepubliceerde agent in de GitLab AI Catalog (`AI > Agents > ReachGate`) heeft
 
 ## 9. Testdekking
 
-**190 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit, verdict→action routing, doctor en MR-triage error handling). Draaien met:
+**214 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit, verdict→action routing, doctor en MR-triage error handling, OpenVEX-export incl. de never-fake-green guard, en de judge-proof generator). Draaien met:
 ```bash
 pytest
 ```
