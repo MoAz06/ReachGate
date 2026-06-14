@@ -88,6 +88,24 @@ The mapping is deliberately conservative, because a VEX `not_affected` tells eve
 
 That last rule is the point: ReachGate refuses to emit a clean VEX `not_affected` from a search that did not actually run to completion. VEX is conventionally a CVE/component (SCA) artifact, so CVE-bearing findings map cleanly while SAST/CWE-style findings are carried honestly as statements against the project as the product. `tools/verify_proof.py` cross-checks the exported VEX against the same receipts, so the VEX claim is falsifiable too.
 
+## Portable evidence layer — not just a scanner
+
+ReachGate is designed as an **offline-verifiable evidence layer**: the same receipts are emitted as replayable, standards-aligned evidence that downstream tooling consumes directly. The deterministic engine decides, the AI only explains, and every exported claim is cross-checked back against the receipts.
+
+- **OpenVEX** (`tools/export_vex.py` → `docs/proof/reachgate.openvex.json`) — CVE/SCA exploitability context (see above).
+- **SARIF 2.1.0** (`tools/export_sarif.py` → `docs/proof/reachgate.sarif.json`) — SAST/code-flow evidence: a REACHABLE path becomes a SARIF `codeFlow`/`threadFlow` over the real graph, NOT_REACHABLE stays "within configured search bounds", and UNKNOWN is a typed evidence gap, never presented as safe. Source locations are only emitted where the receipt carries a file — never invented.
+- **Evidence manifest** (`tools/build_evidence_manifest.py` → `docs/proof/reachgate.evidence-manifest.json`) — sha256 over the machine-readable artifacts (receipts, OpenVEX, SARIF) so a reviewer can confirm offline they are looking at the exact evidence ReachGate produced.
+- **Offline verifier** (`tools/verify_proof.py`) — standard library only, no token, no network; cross-checks the OpenVEX and SARIF back against the receipts, so the evidence is falsifiable.
+
+```bash
+python tools/export_vex.py
+python tools/export_sarif.py
+python tools/build_evidence_manifest.py
+python tools/verify_proof.py
+```
+
+For a guided walkthrough, see the [Judge Pack](docs/JUDGE_PACK.md). All claims are advisory by default and scoped to the configured search bounds; this is standards-aligned, not a certified gate.
+
 ## CI/CD integration
 
 Add ReachGate to your pipeline as an advisory MR triage job — it runs on every merge request and posts a deterministic triage receipt automatically. The bundled job is non-blocking (`allow_failure: true`) so it never blocks a merge on its own. The receipts and `reachgate-receipts.json` artifact are gate-ready evidence: `tools/diff_receipts.py --fail-on-new-reachable` can turn a receipt diff into a blocking check when you choose to enforce it. Any `NOT_REACHABLE` verdict remains scoped to the configured search bounds recorded in the certificate.
@@ -121,7 +139,10 @@ python tools/verify_proof.py
 
 It checks the captured receipt artifacts below against the verdicts the MR
 comments claim — matching fingerprints across MR !2 and MR !3, exhaustive
-`NOT_REACHABLE`, honest `UNKNOWN`, and zero API errors. See [docs/JUDGE_REPLAY.md](docs/JUDGE_REPLAY.md) for the two-minute replay.
+`NOT_REACHABLE`, honest `UNKNOWN`, and zero API errors — and, when present,
+cross-checks the exported OpenVEX and SARIF back against those receipts. See
+[docs/JUDGE_REPLAY.md](docs/JUDGE_REPLAY.md) for the two-minute replay and
+[docs/JUDGE_PACK.md](docs/JUDGE_PACK.md) for the full judge walkthrough.
 
 To compare two receipt artifacts as a security regression review, run `python tools/diff_receipts.py OLD NEW` (optionally with `--fail-on-new-reachable`).
 
@@ -211,7 +232,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 pytest
 ```
 
-229 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), and the judge-proof page generator.
+250 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, and the judge-proof page generator.
 
 ## Orbit Notes
 
