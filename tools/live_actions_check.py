@@ -1,9 +1,16 @@
-"""Live test: create a real GitLab issue + MR comment via GitLabActions.
+"""Live action check: create a REAL GitLab issue + MR comment via GitLabActions.
+
+WARNING: This is NOT a unit test. It performs live GitLab side effects against
+the configured project (it creates a real issue and posts a real comment) using
+your GITLAB_TOKEN. It is deliberately kept out of the pytest suite (which lives
+under tests/). Run it manually, on purpose, and only against a project where
+creating an issue is acceptable. Renamed from tools/test_actions.py so it is no
+longer mistaken for, or accidentally collected as, a pytest test.
 
 Usage:
     export GITLAB_TOKEN="glpat-xxxxx"
     export GITLAB_PROJECT_ID="83119911"
-    python tools/test_actions.py
+    python tools/live_actions_check.py
 """
 
 from __future__ import annotations
