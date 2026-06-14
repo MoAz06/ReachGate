@@ -1,0 +1,47 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "urn:reachgate:openvex:1ee3919d8904361d",
+  "author": "ReachGate",
+  "timestamp": "2026-06-12T19:59:32.507690+00:00",
+  "version": 1,
+  "tooling": "ReachGate (policy 8eae9f21a3e6)",
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "Server-side request forgery (SSRF)"
+      },
+      "products": [
+        {
+          "@id": "https://gitlab.com/gitlab-ai-hackathon/transcend/39037247"
+        }
+      ],
+      "status": "affected",
+      "action_statement": "ReachGate found a graph path from a declared entry point to the vulnerable definition (File:content/frontend/404/archives_redirect.js -> Definition:getArchivesVersions). Fingerprint 8c2aeb6e2457adc7. Triage and remediate."
+    },
+    {
+      "vulnerability": {
+        "name": "Improper limitation of a pathname ('Path Traversal')"
+      },
+      "products": [
+        {
+          "@id": "https://gitlab.com/gitlab-ai-hackathon/transcend/39037247"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "status_notes": "ReachGate exhaustive graph search within configured bounds (frontier exhausted, 0 bounds hit, 0 API errors). Reachability fingerprint d457ba33eef89e2e; policy 8eae9f21a3e6."
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-47736"
+      },
+      "products": [
+        {
+          "@id": "https://gitlab.com/gitlab-ai-hackathon/transcend/39037247"
+        }
+      ],
+      "status": "under_investigation",
+      "status_notes": "ReachGate could not complete the search: insufficient_evidence:no_definitions_indexed. Insufficient evidence -- not safe, and explicitly not NOT_REACHABLE. Fingerprint f215d5e5e0d416e3; policy 8eae9f21a3e6."
+    }
+  ]
+}
