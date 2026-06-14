@@ -13,12 +13,18 @@ python tools/verify_proof.py
 
 Standard library only — no install, no network, no GitLab token. It reads the
 captured proof artifacts committed in this repo and checks they say exactly
-what the merge-request comments and UNKNOWN receipt claim:
+what the merge-request comments and UNKNOWN receipt claim. The replay set is:
 
 - `docs/proof/mr2-reachgate-receipts.json` — the Phase 1 run (MR !2)
 - `docs/proof/mr3-reachgate-receipts-rerun.json` — the Phase 2 rerun (MR !3)
 - `docs/proof/unknown-reachgate-receipt.json` — a live UNKNOWN capture (the third verdict)
 - `docs/proof/reachgate.openvex.json` — the exported OpenVEX, cross-checked against the receipts above
+- `docs/proof/reachgate.sarif.json` — the exported SARIF 2.1.0, cross-checked against the receipts above
+- `docs/proof/reachgate.evidence-manifest.json` — sha256 manifest for the machine-readable proof artifacts
+
+`verify_proof.py` cross-checks the receipts, OpenVEX, and SARIF. The evidence
+manifest is the hash inventory for those machine-readable artifacts and can be
+regenerated with `python tools/build_evidence_manifest.py`.
 
 Expected output:
 
@@ -29,6 +35,7 @@ ReachGate proof verified
 - NOT_REACHABLE is exhaustive: frontier exhausted, no bounds hit, API errors 0
 - UNKNOWN is honest: a real indexed file with no definitions yields insufficient_evidence, not fake-green
 - OpenVEX export matches the receipts: affected / not_affected (exhaustive only) / under_investigation, cross-checked
+- SARIF export matches the receipts: error / note / warning levels, fingerprints, UNKNOWN evidence gap, NOT_REACHABLE within configured bounds, cross-checked
 - verifies captured artifacts offline; rerun the linked MRs for live proof
 ```
 
@@ -44,6 +51,7 @@ Exit code is `0` on success, non-zero if any check fails.
 | `api_errors == 0`, no bound hit, `frontier_exhausted == true` | `NOT_REACHABLE` is an exhaustive negative within bounds, not a cut-off search dressed up as proof. |
 | Fingerprints identical across MR !2 and MR !3 | The same finding fingerprints the same way, which is what makes MR triage idempotent (reruns update in place, never duplicate). |
 | OpenVEX statuses match the receipts | The exported `reachgate.openvex.json` says exactly what the receipts justify — `not_affected` only for an exhaustive `NOT_REACHABLE`, never for an `UNKNOWN` — so the VEX claim is falsifiable, not just asserted. |
+| SARIF results match the receipts | The exported `reachgate.sarif.json` carries the same fingerprints and maps verdicts to `error` / `note` / `warning`; `UNKNOWN` remains an evidence gap and `NOT_REACHABLE` stays scoped to configured bounds. |
 
 This checks the **captured** artifacts offline. It does not re-query GitLab.
 For live proof, re-run the pipelines on the merge requests below.
