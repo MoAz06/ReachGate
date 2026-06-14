@@ -29,6 +29,14 @@ PROOF_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "proof")
 MR2 = os.path.join(PROOF_DIR, "mr2-reachgate-receipts.json")
 MR3 = os.path.join(PROOF_DIR, "mr3-reachgate-receipts-rerun.json")
 UNKNOWN = os.path.join(PROOF_DIR, "unknown-reachgate-receipt.json")
+VEX = os.path.join(PROOF_DIR, "reachgate.openvex.json")
+
+# Import the VEX mapping so the cross-check uses the exact same logic that
+# produced the document -- no second, drifting copy of the rules.
+try:
+    from tools import export_vex  # imported as a package (tests, -m)
+except ImportError:  # run directly: python tools/verify_proof.py
+    import export_vex
 
 UNKNOWN_BASIS = "insufficient_evidence:no_definitions_indexed"
 
@@ -129,6 +137,19 @@ def verify_unknown(artifact: dict, c: Checker) -> None:
             cert.get("frontier_exhausted") is False)
 
 
+def verify_vex(vex: dict, findings: list[dict], c: Checker) -> None:
+    """Cross-check the exported OpenVEX against the receipts it came from, so
+    the VEX claim is falsifiable too: every status must match what the
+    receipts justify, and nothing non-exhaustive may read as not_affected."""
+    name = "VEX"
+    c.check(f"{name}: @context is OpenVEX",
+            vex.get("@context") == export_vex.OPENVEX_CONTEXT)
+    statements = vex.get("statements") or []
+    c.check(f"{name}: has statements", len(statements) > 0)
+    for problem in export_vex.crosscheck(vex, findings):
+        c.check(f"{name}: {problem}", False)
+
+
 def verify_fingerprints_match(mr2: dict, mr3: dict, c: Checker) -> None:
     a, b = _by_occurrence(mr2), _by_occurrence(mr3)
     c.check("MR2/MR3 cover the same findings", set(a) == set(b))
@@ -152,6 +173,16 @@ def main() -> int:
     if unknown is not None:
         verify_unknown(unknown, c)
 
+    # VEX cross-check is optional: only run when the document is present, so a
+    # checkout without it still verifies the receipts. When present it must be
+    # consistent with the same MR !2 + UNKNOWN receipts it is built from.
+    vex = _load(VEX, c) if os.path.exists(VEX) else None
+    vex_checked = False
+    if vex is not None and mr2 is not None and unknown is not None:
+        findings = mr2.get("findings", []) + unknown.get("findings", [])
+        verify_vex(vex, findings, c)
+        vex_checked = True
+
     if c.failures:
         print("ReachGate proof FAILED")
         for f in c.failures:
@@ -167,6 +198,9 @@ def main() -> int:
           "no bounds hit, API errors 0")
     print("- UNKNOWN is honest: a real indexed file with no definitions "
           "yields insufficient_evidence, not fake-green")
+    if vex_checked:
+        print("- OpenVEX export matches the receipts: affected / not_affected "
+              "(exhaustive only) / under_investigation, cross-checked")
     print("- verifies captured artifacts offline; rerun the linked MRs "
           "for live proof")
     return 0
