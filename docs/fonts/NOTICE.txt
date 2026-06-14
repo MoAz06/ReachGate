@@ -1,0 +1,15 @@
+Self-hosted fonts used by docs/judge-proof.html (latin subset, woff2).
+Both are licensed under the SIL Open Font License, Version 1.1 (OFL-1.1).
+Full license text: https://scripts.sil.org/OFL
+
+- Courier Prime
+  Copyright (c) The Quote-Unquote Apps (https://quoteunquoteapps.com/courierprime/)
+  Files: courier-prime-400.woff2, courier-prime-700.woff2
+
+- Spectral
+  Copyright (c) Production Type (https://productiontype.com/family/spectral)
+  Files: spectral-700.woff2, spectral-800.woff2
+
+The OFL permits bundling and redistribution with the document. These subsets
+were produced by the Google Fonts service. No Reserved Font Names are used by
+this project, and the fonts are not sold on their own.

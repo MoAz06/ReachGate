@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReachGate Judge Proof</title>
+  <style>
+    /* Self-hosted, offline. Courier Prime (OFL) + Spectral (OFL), latin subset.
+       Relative paths under docs/fonts/; system stack is the graceful fallback. */
+    @font-face { font-family: "Courier Prime"; font-style: normal; font-weight: 400;
+      font-display: swap; src: url("fonts/courier-prime-400.woff2") format("woff2"); }
+    @font-face { font-family: "Courier Prime"; font-style: normal; font-weight: 700;
+      font-display: swap; src: url("fonts/courier-prime-700.woff2") format("woff2"); }
+    @font-face { font-family: "Spectral"; font-style: normal; font-weight: 700;
+      font-display: swap; src: url("fonts/spectral-700.woff2") format("woff2"); }
+    @font-face { font-family: "Spectral"; font-style: normal; font-weight: 800;
+      font-display: swap; src: url("fonts/spectral-800.woff2") format("woff2"); }
+    :root {
+      color-scheme: light;
+      --paper: #f6f0e1;
+      --paper2: #efe6d2;
+      --paper3: #e8dcc2;
+      --desk: #b3a888;
+      --ink: #241d12;
+      --ink2: #4a4030;
+      --dim: #6c6049;
+      --faint: #9a8c6d;
+      --rule: #d6c9a9;
+      --rule2: #c6b690;
+      --red: #ad3320;
+      --red2: #8a2616;
+      --red-bg: #f0dfd4;
+      --green: #3c6a44;
+      --green-bg: #dde7d6;
+      --amber: #8f6410;
+      --amber-bg: #efe4c8;
+      --radius: 3px;
+      --radius-sm: 2px;
+      --serif: "Spectral", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+      --mono: "Courier Prime", "Courier New", Courier, "Nimbus Mono PS", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--serif);
+      color: var(--ink);
+      line-height: 1.62;
+      background-color: var(--desk);
+      background-image:
+        radial-gradient(rgba(0,0,0,.05) .5px, transparent .5px),
+        radial-gradient(rgba(255,255,255,.06) .5px, transparent .5px);
+      background-size: 5px 5px, 5px 5px;
+      background-position: 0 0, 2.5px 2.5px;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    /* faint paper fiber, reused by every sheet via the .sheet mixin */
+    .sheet {
+      background-color: var(--paper);
+      background-image:
+        repeating-linear-gradient(90deg, rgba(120,90,40,.022) 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(0deg, rgba(120,90,40,.018) 0 1px, transparent 1px 4px);
+      border: 1px solid var(--rule2);
+      box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 14px 28px -18px rgba(40,30,12,.7);
+    }
+    h1, h2, h3, h4, p { margin-top: 0; }
+    a { color: var(--red); text-decoration: none; border-bottom: 1px solid rgba(173,51,32,.4); }
+    a:hover { border-bottom-color: var(--red); }
+    code, .mono { font-family: var(--mono); }
+
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); }
+                       to { opacity: 1; transform: none; } }
+    @keyframes stampin {
+      0% { opacity: 0; transform: rotate(-7deg) scale(1.6); }
+      70% { opacity: 1; transform: rotate(-7deg) scale(.94); }
+      100% { opacity: 1; transform: rotate(-7deg) scale(1); }
+    }
+
+    /* ---- cover sheet / letterhead ---- */
+    header.hero { padding: 40px 24px 8px; }
+    .hero-inner {
+      max-width: 1040px; margin: 0 auto; position: relative; overflow: hidden;
+      background-color: var(--paper);
+      background-image:
+        repeating-linear-gradient(90deg, rgba(120,90,40,.022) 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(0deg, rgba(120,90,40,.018) 0 1px, transparent 1px 4px);
+      border: 1px solid var(--rule2);
+      box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 22px 44px -22px rgba(40,30,12,.75);
+    }
+    .hero-inner::before {
+      content: ""; position: absolute; left: 0; right: 0; top: 0; height: 6px;
+      background: var(--red);
+    }
+    .letterhead {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding: 20px 36px 14px; border-bottom: 1px solid var(--rule);
+    }
+    .brand {
+      font-family: var(--serif); font-weight: 700; font-size: 1.35rem;
+      letter-spacing: .02em; color: var(--ink);
+    }
+    .file-meta {
+      font-family: var(--mono); font-size: .72rem; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--dim);
+    }
+    .filed-stamp {
+      margin-left: auto; transform: rotate(-9deg);
+      font-family: var(--mono); font-weight: 700; font-size: .82rem;
+      letter-spacing: .16em; text-transform: uppercase; color: var(--red);
+      border: 2px solid var(--red); border-radius: 4px; padding: 4px 12px;
+      mix-blend-mode: multiply; opacity: .82;
+    }
+    .classbar {
+      font-family: var(--mono); font-size: .64rem; letter-spacing: .26em;
+      text-transform: uppercase; color: var(--paper);
+      background: var(--ink); padding: 6px 36px;
+    }
+    .hero-body { padding: 34px 36px 38px; }
+    .kicker {
+      font-family: var(--mono); font-size: .72rem; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--dim); margin-bottom: 18px;
+      font-style: normal;
+    }
+    h1 {
+      font-family: var(--serif); font-weight: 800;
+      font-size: clamp(2.1rem, 4.8vw, 3.7rem);
+      letter-spacing: -.01em; line-height: 1.06; margin-bottom: 18px; color: var(--ink);
+    }
+    h1 .em { font-style: italic; color: var(--red); }
+    .hero p { max-width: 600px; color: var(--ink2); margin-bottom: 5px;
+      font-family: var(--mono); font-size: .82rem; line-height: 1.75; }
+    .filed-via {
+      margin-top: 22px !important; padding: 11px 16px; display: inline-block;
+      background: var(--paper3); border: 1px dashed var(--rule2);
+      font-family: var(--mono); font-size: .82rem; color: var(--ink) !important;
+    }
+    .filed-via .caret { color: var(--red); font-weight: 700; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .pill {
+      border: 1px solid var(--rule2); background: var(--paper2);
+      padding: 6px 13px; color: var(--ink);
+      font-family: var(--mono); font-size: .74rem; border-radius: 0;
+    }
+    a.pill { border-bottom: 1px solid var(--rule2); }
+    .pill.ver { color: var(--red); border-color: rgba(173,51,32,.5); }
+    a.pill:hover { border-color: var(--red); color: var(--red); }
+
+    main { max-width: 1040px; margin: 0 auto; padding: 24px 24px 24px; }
+
+    /* ---- summary ledger (docket strip) ---- */
+    .summary-strip {
+      display: grid; grid-template-columns: repeat(6, 1fr); list-style: none;
+      margin: 0 0 28px; padding: 0; overflow: hidden;
+      background-color: var(--paper); border: 1px solid var(--rule2);
+      box-shadow: 0 14px 28px -20px rgba(40,30,12,.7);
+    }
+    .summary-strip li {
+      padding: 15px 16px 13px; border-right: 1px solid var(--rule);
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .summary-strip li:last-child { border-right: none; }
+    .metric-label {
+      font-family: var(--mono); font-size: .6rem; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--dim);
+    }
+    .metric-value {
+      font-family: var(--serif); font-size: 1.95rem; line-height: 1.05;
+      color: var(--ink); font-weight: 700;
+    }
+    .metric-detail { font-size: .74rem; color: var(--ink2); line-height: 1.4; }
+
+    /* ---- flip exhibits (the contradiction) ---- */
+    .flip {
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 0;
+      align-items: stretch; margin: 0 0 34px; overflow: hidden;
+      background-color: var(--paper); border: 1px solid var(--rule2);
+      box-shadow: 0 16px 30px -20px rgba(40,30,12,.7);
+    }
+    .flip-card {
+      padding: 24px 26px; display: flex; flex-direction: column; gap: 8px;
+      position: relative;
+    }
+    .flip-card.reachable { border-top: 5px solid var(--red); }
+    .flip-card.not_reachable { border-top: 5px solid var(--green); }
+    .flip-tag { font-family: var(--mono); font-size: .64rem; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--dim); }
+    .flip-verdict { font-family: var(--mono); font-weight: 700; font-size: 1.02rem;
+      letter-spacing: .06em; }
+    .reachable .flip-verdict { color: var(--red); }
+    .not_reachable .flip-verdict { color: var(--green); }
+    .flip-name { font-family: var(--serif); font-size: 1.4rem; color: var(--ink);
+      line-height: 1.22; font-style: italic; }
+    .flip-note { font-size: .85rem; color: var(--ink2); font-family: var(--mono); }
+    .flip-vs {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; padding: 0 20px; background: var(--paper3);
+      border-left: 1px solid var(--rule); border-right: 1px solid var(--rule);
+      font-family: var(--mono); font-size: .6rem; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--dim); text-align: center;
+    }
+    .flip-vs-mark { font-size: 1.5rem; color: var(--red); margin: 5px 0; }
+
+    .lede {
+      font-family: var(--mono); font-size: .85rem; line-height: 1.8;
+      max-width: 780px; margin: 0 0 36px; color: var(--ink2);
+      border-left: 3px solid var(--red); padding: 2px 0 2px 16px;
+    }
+    .lede strong { color: var(--ink); font-weight: 700; }
+
+    /* ---- shared section heads ---- */
+    .section-head { margin: 0 0 16px; }
+    .section-head h2 {
+      font-family: var(--serif); font-size: 1.5rem; font-weight: 700;
+      color: var(--ink); margin: 0 0 4px;
+    }
+    .section-head p {
+      font-family: var(--mono); font-size: .8rem; color: var(--ink2);
+      line-height: 1.6; max-width: 720px; margin: 0;
+    }
+
+    /* ---- verdict-logic / integrity panel ---- */
+    .logic { margin: 0 0 34px; }
+    .logic-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .logic-card {
+      padding: 18px 18px 16px; background: var(--paper); border: 1px solid var(--rule2);
+      border-top: 4px solid var(--rule2); display: flex; flex-direction: column; gap: 10px;
+      box-shadow: 0 12px 24px -20px rgba(40,30,12,.7);
+    }
+    .logic-card.reachable { border-top-color: var(--red); }
+    .logic-card.not_reachable { border-top-color: var(--green); }
+    .logic-card.unknown { border-top-color: var(--amber); }
+    .lc-verdict { font-family: var(--mono); font-weight: 700; font-size: .9rem;
+      letter-spacing: .06em; }
+    .reachable .lc-verdict { color: var(--red); }
+    .not_reachable .lc-verdict { color: var(--green); }
+    .unknown .lc-verdict { color: var(--amber); }
+    .logic-card p { font-size: .92rem; line-height: 1.55; color: var(--ink); margin: 0; }
+    .logic-card code { font-family: var(--mono); font-size: .82rem; color: var(--amber);
+      background: var(--amber-bg); padding: 1px 5px; }
+    .lc-foot { margin-top: auto; font-family: var(--mono); font-size: .66rem;
+      letter-spacing: .04em; text-transform: uppercase; color: var(--dim); }
+
+    /* ---- policy + verify, side by feel ---- */
+    .policy, .verify {
+      margin: 0 0 34px; padding: 22px 24px; background: var(--paper);
+      border: 1px solid var(--rule2); box-shadow: 0 12px 24px -20px rgba(40,30,12,.7);
+    }
+    .policy-table { width: 100%; max-width: 460px; border-collapse: collapse;
+      margin-top: 14px; font-size: .86rem; }
+    .policy-table th { font-family: var(--mono); font-size: .64rem; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--dim); text-align: left; padding: 6px 0;
+      border-bottom: 2px solid var(--ink); }
+    .policy-table td { font-family: var(--mono); font-size: .82rem; color: var(--ink);
+      padding: 7px 0; border-bottom: 1px solid var(--rule); }
+    .policy-table .w { text-align: right; }
+    .policy-table .thr td { font-weight: 700; color: var(--red); border-bottom: none;
+      padding-top: 11px; }
+
+    .cmd {
+      font-family: var(--mono); font-size: .86rem; color: var(--ink);
+      background: var(--paper3); border: 1px dashed var(--rule2);
+      padding: 11px 14px; margin: 4px 0 16px; display: inline-block;
+    }
+    .cmd .caret { color: var(--red); font-weight: 700; }
+    .checks { list-style: none; margin: 0 0 14px; padding: 0;
+      display: grid; gap: 8px; }
+    .checks li { font-family: var(--mono); font-size: .82rem; color: var(--ink);
+      display: flex; gap: 10px; line-height: 1.5; }
+    .checks .tick { color: var(--green); font-weight: 700; flex: 0 0 auto; }
+    .cost { font-family: var(--mono); font-size: .82rem; color: var(--ink2);
+      margin: 0 0 8px; }
+    .cost strong { color: var(--red); }
+    .verify-links { font-family: var(--mono); font-size: .82rem; color: var(--ink2); margin: 0; }
+
+    .exhibits-head { margin: 40px 0 18px; padding-top: 18px; border-top: 2px solid var(--ink); }
+    .exhibits-head h2 { font-family: var(--serif); font-size: 1.6rem; font-weight: 700;
+      color: var(--ink); margin: 0 0 8px; }
+    .exhibits-head .lede { margin-bottom: 0; }
+
+    /* ---- findings section ---- */
+    .verdict { margin: 0 0 38px; animation: rise .55s ease both; }
+    .verdict.reachable { animation-delay: .04s; }
+    .verdict.not_reachable { animation-delay: .12s; }
+    .verdict.unknown { animation-delay: .2s; }
+    .verdict-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap; padding-bottom: 10px; margin-bottom: 18px;
+      border-bottom: 2px solid var(--ink);
+    }
+    .verdict-head h2 {
+      font-family: var(--serif); font-size: 1.55rem; font-weight: 700;
+      letter-spacing: .01em; margin: 0;
+    }
+    .verdict-head .slash { color: var(--red); margin-right: 12px; font-weight: 700; }
+    .reachable .verdict-head h2 { color: var(--red); }
+    .not_reachable .verdict-head h2 { color: var(--green); }
+    .unknown .verdict-head h2 { color: var(--amber); }
+    .verdict-meta { display: flex; align-items: baseline; gap: 14px;
+      font-family: var(--mono); font-size: .76rem; color: var(--ink2); }
+    .verdict-meta .count { color: var(--dim); }
+
+    /* ---- exhibit card ---- */
+    .entry {
+      position: relative; margin: 0 0 22px; padding: 26px 24px 22px;
+      background-color: var(--paper);
+      background-image:
+        repeating-linear-gradient(90deg, rgba(120,90,40,.02) 0 1px, transparent 1px 3px);
+      border: 1px solid var(--rule2);
+      box-shadow: 0 14px 26px -20px rgba(40,30,12,.7);
+    }
+    .entry::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+    }
+    .entry.reachable::before { background: var(--red); }
+    .entry.not_reachable::before { background: var(--green); }
+    .entry.unknown::before { background: var(--amber); }
+    .stamp {
+      position: absolute; top: 20px; right: 20px; transform: rotate(-7deg);
+      font-family: var(--mono); font-weight: 700; font-size: .82rem;
+      letter-spacing: .1em; padding: 7px 13px; border-radius: 4px;
+      border: 2.5px solid; background: transparent;
+      mix-blend-mode: multiply; opacity: .85;
+      box-shadow: 0 0 0 1px currentColor inset;
+      animation: stampin .5s cubic-bezier(.2,1.4,.5,1) both;
+    }
+    .stamp.reachable { color: var(--red); border-color: var(--red); animation-delay: .25s; }
+    .stamp.not_reachable { color: var(--green); border-color: var(--green); animation-delay: .3s; }
+    .stamp.unknown { color: var(--amber); border-color: var(--amber); animation-delay: .35s; }
+    .exhibit-no {
+      display: inline-block; font-family: var(--mono); font-size: .64rem;
+      letter-spacing: .18em; text-transform: uppercase; color: var(--paper);
+      background: var(--ink); padding: 4px 11px; margin-bottom: 14px;
+    }
+    .entry-head { margin-bottom: 4px; padding-right: 130px; }
+    .entry-head h3 { font-family: var(--serif); font-size: 1.5rem; font-weight: 700;
+      color: var(--ink); line-height: 1.22; margin: 0 0 13px; }
+    .entry-tags { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .basis { color: var(--dim); font-size: .74rem; }
+    .sev {
+      font-family: var(--mono); font-size: .62rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em; padding: 3px 9px;
+      border-radius: 0; border: 1px solid currentColor;
+    }
+    .sev-high, .sev-critical { color: var(--red); background: var(--red-bg); }
+    .sev-medium { color: var(--amber); background: var(--amber-bg); }
+    .sev-low { color: var(--green); background: var(--green-bg); }
+    .repro {
+      font-family: var(--mono); font-size: .68rem; color: var(--green);
+      background: var(--green-bg); border: 1px solid rgba(60,106,68,.45);
+      border-radius: 0; padding: 3px 10px;
+    }
+
+    /* ---- attack-path exhibit ---- */
+    .path-panel {
+      margin: 18px 0 4px; padding: 22px 18px 18px; position: relative;
+      border: 1px solid var(--rule2); background: var(--paper2);
+    }
+    .panel-label {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      font-family: var(--mono); font-size: .62rem; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--dim); margin-bottom: 20px;
+    }
+    .panel-label .flowtip { color: var(--red); }
+    .panel-label .flowtip::before { content: "\2014 "; }
+    .panel-label .flowtip::after { content: " \2192"; }
+    .path-flow {
+      align-items: stretch; display: flex; flex-wrap: wrap; gap: 0;
+      list-style: none; margin: 0; padding: 0;
+    }
+    .node {
+      display: flex; flex-direction: column; gap: 8px; justify-content: center;
+      padding: 14px 16px; min-width: 158px; background: var(--paper);
+      border: 1.5px solid var(--ink); position: relative; z-index: 1;
+    }
+    .node-role { font-family: var(--mono); font-size: .58rem; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--dim); }
+    .node-body { display: flex; align-items: center; gap: 9px; }
+    .node-icon { font-size: 1rem; line-height: 1; }
+    .node-name { font-family: var(--mono); font-size: .84rem; font-weight: 700;
+      color: var(--ink); word-break: break-all; }
+    .node.entry { border-color: var(--ink); box-shadow: 4px 4px 0 rgba(36,29,18,.14); }
+    .node.entry .node-icon { color: var(--ink); }
+    .node.vuln { border-color: var(--red); background: var(--red-bg);
+      box-shadow: 4px 4px 0 rgba(173,51,32,.18); }
+    .node.vuln .node-icon { color: var(--red); }
+    .node.vuln .node-name { color: var(--red2); }
+    .node.safe { border: 1.5px dashed var(--green); background: var(--green-bg); }
+    .node.safe .node-icon, .node.safe .node-role { color: var(--green); }
+    .node.unknown { border: 1.5px dashed var(--amber); background: var(--amber-bg); }
+    .node.unknown .node-icon, .node.unknown .node-role { color: var(--amber); }
+    .connector {
+      flex: 1 1 84px; min-width: 84px; min-height: 80px;
+      display: flex; align-items: center; position: relative;
+    }
+    .connector .wire { flex: 1; height: 0; border-top: 2px solid var(--ink); }
+    .connector.found .wire { border-top-style: solid; border-color: var(--ink); }
+    .connector.found .head { color: var(--red); font-size: 1rem; margin-left: -3px; }
+    .connector.severed .wire { border-top: 2px dashed var(--ink2); opacity: .6; }
+    .connector.severed .cut {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(-6deg);
+      width: 30px; height: 30px; border-radius: 50%; background: var(--paper);
+      border: 2px solid var(--red); color: var(--red); font-weight: 700;
+      display: flex; align-items: center; justify-content: center; font-size: .85rem;
+      mix-blend-mode: multiply; opacity: .9;
+    }
+    .connector-label {
+      position: absolute; left: 50%; top: calc(50% + 24px); transform: translateX(-50%);
+      font-family: var(--mono); font-size: .6rem; letter-spacing: .04em;
+      text-transform: uppercase; color: var(--red); white-space: nowrap;
+    }
+    .score-line {
+      margin: 20px 0 0; font-family: var(--mono); font-size: .76rem; color: var(--ink2);
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline;
+    }
+    .score-line strong { color: var(--ink); font-size: 1.2rem; padding: 0 4px;
+      font-family: var(--serif); }
+
+    /* ---- sealed certificate (collapsible) ---- */
+    details.evidence {
+      margin-top: 16px; border: 1px solid var(--rule2); background: var(--paper2);
+    }
+    details.evidence > summary {
+      cursor: pointer; padding: 12px 16px; font-family: var(--mono);
+      font-size: .78rem; color: var(--ink); text-transform: uppercase; letter-spacing: .04em;
+      list-style: none; display: flex; align-items: center; gap: 9px;
+    }
+    details.evidence > summary::-webkit-details-marker { display: none; }
+    details.evidence > summary::before {
+      content: "[+]"; color: var(--red); font-weight: 700;
+    }
+    details.evidence[open] > summary::before { content: "[\2212]"; }
+    .seal { color: var(--red); }
+    details.evidence > summary code {
+      margin-left: auto; font-size: .72rem; color: var(--red); text-transform: none;
+      background: var(--paper); border: 1px solid var(--rule2);
+      padding: 2px 8px;
+    }
+    details.evidence .grid { padding: 0 16px 16px; }
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px; align-items: start;
+    }
+    .evidence-panel {
+      border: 1px solid var(--rule); background: var(--paper); padding: 14px 16px;
+    }
+    .evidence-panel h4 {
+      font-family: var(--mono); font-size: .62rem; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--dim); margin-bottom: 10px;
+      border-bottom: 1px solid var(--rule); padding-bottom: 7px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    th, td { border-top: 1px solid var(--rule); padding: 7px 0; vertical-align: top; }
+    tr:first-child th, tr:first-child td { border-top: none; }
+    th { width: 42%; color: var(--dim); text-align: left; font-weight: 400;
+      font-family: var(--mono); font-size: .7rem; padding-right: 12px; }
+    td { font-family: var(--mono); font-size: .74rem; color: var(--ink); word-break: break-word; }
+
+    footer {
+      max-width: 1040px; margin: 8px auto 0; padding: 18px 24px 56px;
+      color: var(--ink2); font-family: var(--mono); font-size: .74rem;
+      border-top: 2px solid var(--ink);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; }
+    }
+    @media (max-width: 920px) {
+      .summary-strip { grid-template-columns: repeat(3, 1fr); }
+      .summary-strip li:nth-child(3) { border-right: none; }
+      .flip { grid-template-columns: 1fr; }
+      .flip-vs { flex-direction: row; gap: 10px; padding: 12px;
+        border-left: none; border-right: none;
+        border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+      .flip-vs-mark { transform: rotate(90deg); margin: 0; }
+    }
+    @media (max-width: 620px) {
+      .hero-body { padding: 26px 22px 28px; }
+      .letterhead, .classbar { padding-left: 22px; padding-right: 22px; }
+      .summary-strip { grid-template-columns: repeat(2, 1fr); }
+      .summary-strip li { border-right: none; border-bottom: 1px solid var(--rule); }
+      .entry-head { padding-right: 0; }
+      .logic-grid { grid-template-columns: 1fr; }
+      .stamp { position: static; display: inline-block; transform: rotate(-3deg); margin-bottom: 14px; }
+      .node, .connector { min-width: 100%; }
+      .connector { min-height: 50px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="letterhead">
+        <span class="brand">ReachGate</span>
+        <span class="file-meta">Case File &middot; No. 39037247 &middot; Policy 8eae9f21a3e6</span>
+        <span class="filed-stamp">Filed</span>
+      </div>
+      <div class="classbar">Evidence &mdash; reachability triage on GitLab Orbit</div>
+      <div class="hero-body">
+        <p class="kicker">In the matter of automated vulnerability triage</p>
+        <h1>Every verdict is a graph path,<br>or its <span class="em">provable absence</span>.</h1>
+        <p>Generated from docs/proof/*.json, not hand-written.</p>
+        <p>Each exhibit below is a live receipt: the walk, the certificate, the fingerprint.</p>
+        <p class="filed-via"><span class="caret">&rsaquo;</span>
+          Verify offline with python tools/verify_proof.py</p>
+        <div class="meta">
+          <span class="pill ver">policy 8eae9f21a3e6</span>
+          <a class="pill" href="https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/2">MR !2 canonical proof</a>
+          <a class="pill" href="https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3">MR !3 idempotency rerun</a>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main>
+    <ul class="summary-strip">
+
+<li>
+  <span class="metric-label">Verdicts proven</span>
+  <span class="metric-value">3</span>
+  <span class="metric-detail">red, green, and honest yellow</span>
+</li>
+
+<li>
+  <span class="metric-label">Reachable</span>
+  <span class="metric-value">1</span>
+  <span class="metric-detail">path-backed finding in MR !2</span>
+</li>
+
+<li>
+  <span class="metric-label">Not reachable</span>
+  <span class="metric-value">1</span>
+  <span class="metric-detail">exhaustive within configured bounds</span>
+</li>
+
+<li>
+  <span class="metric-label">Unknown</span>
+  <span class="metric-value">1</span>
+  <span class="metric-detail">insufficient evidence, not fake-green</span>
+</li>
+
+<li>
+  <span class="metric-label">MR !3 rerun</span>
+  <span class="metric-value">same</span>
+  <span class="metric-detail">fingerprints match MR !2</span>
+</li>
+
+<li>
+  <span class="metric-label">API errors</span>
+  <span class="metric-value">0</span>
+  <span class="metric-detail">across captured proof receipts</span>
+</li>
+
+</ul>
+    
+<section class="flip">
+  <article class="flip-card reachable">
+    <span class="flip-tag">Exhibit A</span>
+    <span class="flip-verdict">REACHABLE</span>
+    <span class="flip-name">Server-side request forgery (SSRF)</span>
+    <span class="flip-note">a graph path reaches it &mdash; escalate</span>
+  </article>
+  <div class="flip-vs">
+    <span class="flip-vs-line">same MR</span>
+    <span class="flip-vs-line">same graph</span>
+    <span class="flip-vs-mark">&#8644;</span>
+    <span class="flip-vs-line">opposite verdict</span>
+  </div>
+  <article class="flip-card not_reachable">
+    <span class="flip-tag">Exhibit B</span>
+    <span class="flip-verdict">NOT_REACHABLE</span>
+    <span class="flip-name">Improper limitation of a pathname (&#x27;Path Traversal&#x27;)</span>
+    <span class="flip-note">frontier exhausted, no path &mdash; deprioritize</span>
+  </article>
+</section>
+
+    
+<section class="logic">
+  <div class="section-head">
+    <h2>What it takes to earn each verdict</h2>
+    <p>The point is not that ReachGate answers. It is that it refuses to
+    answer when the evidence is thin.</p>
+  </div>
+  <div class="logic-grid">
+    <div class="logic-card reachable">
+      <span class="lc-verdict">REACHABLE</span>
+      <p>A graph path runs from a declared entry point to the vulnerable
+      definition <strong>and</strong> the rule score crosses the threshold.</p>
+      <span class="lc-foot">evidence: the path itself &mdash; escalate</span>
+    </div>
+    <div class="logic-card not_reachable">
+      <span class="lc-verdict">NOT_REACHABLE</span>
+      <p>Every walk emptied its frontier within bounds, with
+      <strong>0 bounds hit</strong> and <strong>0 API errors</strong>. An
+      exhaustive negative, not a shrug.</p>
+      <span class="lc-foot">evidence: a completed search &mdash; deprioritize</span>
+    </div>
+    <div class="logic-card unknown">
+      <span class="lc-verdict">UNKNOWN</span>
+      <p>Anything less &mdash; no code location, a hit bound, an API error.
+      Here: <code>no_definitions_indexed</code>. Never dressed up as safe.</p>
+      <span class="lc-foot">evidence: insufficient &mdash; flag for review</span>
+    </div>
+  </div>
+</section>
+
+    
+<section class="policy">
+  <div class="section-head">
+    <h2>Transparent policy &mdash; no model score</h2>
+    <p><code>risk_score = sum of triggered rule weights</code>. The model never
+    decides; it only explains the receipt.</p>
+  </div>
+  <table class="policy-table">
+    <tr><th>rule</th><th class="w">weight</th></tr>
+    <tr><td>path_exists</td><td class="w">+50</td></tr><tr><td>direct_import</td><td class="w">+20</td></tr><tr><td>high_severity</td><td class="w">+15</td></tr><tr><td>medium_severity</td><td class="w">+8</td></tr>
+    <tr class="thr"><td>REACHABLE threshold</td><td class="w">&ge; 50</td></tr>
+  </table>
+</section>
+
+    
+<section class="verify">
+  <div class="section-head">
+    <h2>Verify it yourself</h2>
+    <p>Standard library only, no token, offline. These checks run against the
+    captured artifacts &mdash; the same files rendered on this page.</p>
+  </div>
+  <div class="cmd"><span class="caret">&rsaquo;</span> python tools/verify_proof.py</div>
+  <ul class="checks"><li><span class="tick">✓</span>MR !2: one REACHABLE path and one exhaustive NOT_REACHABLE certificate</li><li><span class="tick">✓</span>MR !3 rerun: byte-identical fingerprints (8c2aeb6e2457adc7, d457ba33eef89e2e)</li><li><span class="tick">✓</span>NOT_REACHABLE: frontier exhausted, 0 bounds hit, 0 API errors</li><li><span class="tick">✓</span>UNKNOWN: no_definitions_indexed — not a fake-green NOT_REACHABLE</li><li><span class="tick">✓</span>0 API errors across 5 captured receipts</li></ul>
+  <p class="cost">This proof cost <strong>63</strong> live Orbit API
+  calls across <strong>5</strong> findings. Live graph, nothing mocked.</p>
+  <p class="verify-links">See the receipts in GitLab itself:
+    <a href="https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/2">MR !2</a> &middot; <a href="https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3">MR !3</a></p>
+</section>
+
+    <div class="exhibits-head">
+      <h2>The exhibits</h2>
+      <p class="lede"><strong>Read each like a receipt, not a brochure.</strong>
+      REACHABLE means a path was found. NOT_REACHABLE means exhaustive within
+      configured bounds. UNKNOWN means honest uncertainty, not safe.</p>
+    </div>
+    
+<section class="verdict reachable">
+  <div class="verdict-head">
+    <h2><span class="slash">&sect;</span>REACHABLE</h2>
+    <div class="verdict-meta">
+      <span class="count">1 exhibit</span>
+      <strong>urgent</strong>
+    </div>
+  </div>
+  
+<article class="entry reachable">
+  <span class="stamp reachable">REACHABLE</span>
+  <header class="entry-head">
+    <p class="exhibit-no">Exhibit A</p>
+    <h3>Server-side request forgery (SSRF)</h3>
+    <div class="entry-tags">
+      <span class="sev sev-high">high</span>
+      <span class="basis mono">path_found</span>
+      <span class="repro" title="Same fingerprint in both runs">🔁 Reproduced in MR !2 + MR !3 · identical fingerprint</span>
+    </div>
+  </header>
+  <section class="path-panel reachable">
+    <p class="panel-label"><span>attack surface</span>
+      <span class="flowtip">walk</span><span>vulnerable definition</span></p>
+    <ol class="path-flow found">
+<li class="node entry"><span class="node-role">attack surface</span><span class="node-body"><span class="node-icon" aria-hidden="true">◉</span><span class="node-name">content/frontend/404/archives_redirect.js</span></span></li><li class="connector found" aria-hidden="true"><span class="wire"></span><span class="head">&#9654;</span></li><li class="node vuln"><span class="node-role">vulnerable def</span><span class="node-body"><span class="node-icon" aria-hidden="true">ƒ</span><span class="node-name">getArchivesVersions</span></span></li>
+</ol>
+    <p class="score-line">risk score
+      <strong>85</strong>
+      <span class="mono">path_exists +50, direct_import +20, high_severity +15</span></p>
+  </section>
+  <details class="evidence">
+    <summary><span class="seal">&#9974;</span> certificate &amp; receipt
+      <code>8c2aeb6e2457adc7</code></summary>
+    <div class="grid">
+      <section class="evidence-panel">
+        <h4>Receipt</h4>
+        <table><tr><th>artifact</th><td>mr2-reachgate-receipts.json</td></tr><tr><th>occurrence_id</th><td>demo-ssrf</td></tr><tr><th>basis</th><td>path_found</td></tr><tr><th>fingerprint</th><td>8c2aeb6e2457adc7</td></tr><tr><th>policy_version</th><td>8eae9f21a3e6</td></tr><tr><th>risk_score</th><td>85</td></tr><tr><th>rule_breakdown</th><td>path_exists +50, direct_import +20, high_severity +15</td></tr></table>
+      </section>
+      <section class="evidence-panel">
+        <h4>Evidence flags</h4>
+        <table><tr><th>frontier_exhausted</th><td>False</td></tr><tr><th>api_errors</th><td>0</td></tr><tr><th>max_hops_hit</th><td>False</td></tr><tr><th>visited_cap_hit</th><td>False</td></tr><tr><th>timeout_hit</th><td>False</td></tr><tr><th>strategies_attempted</th><td>graph_edges</td></tr><tr><th>evidence_modes</th><td>graph_edges</td></tr></table>
+      </section>
+      <section class="evidence-panel">
+        <h4>Certificate summary</h4>
+        <table><tr><th>strategy</th><td>bounded-bfs-v1</td></tr><tr><th>max_hops</th><td>6</td></tr><tr><th>max_visited</th><td>40</td></tr><tr><th>max_seconds</th><td>120</td></tr><tr><th>entrypoints_checked</th><td>2</td></tr><tr><th>target_definitions_found</th><td>27</td></tr><tr><th>nodes_visited</th><td>2</td></tr><tr><th>orbit_api_calls</th><td>4</td></tr><tr><th>cache_hits</th><td>0</td></tr><tr><th>entrypoint_globs_hash</th><td>a708d332399a</td></tr></table>
+      </section>
+    </div>
+  </details>
+</article>
+
+</section>
+
+
+<section class="verdict not_reachable">
+  <div class="verdict-head">
+    <h2><span class="slash">&sect;</span>NOT_REACHABLE</h2>
+    <div class="verdict-meta">
+      <span class="count">1 exhibit</span>
+      <strong>safe within configured bounds</strong>
+    </div>
+  </div>
+  
+<article class="entry not_reachable">
+  <span class="stamp not_reachable">NOT_REACHABLE</span>
+  <header class="entry-head">
+    <p class="exhibit-no">Exhibit B</p>
+    <h3>Improper limitation of a pathname (&#x27;Path Traversal&#x27;)</h3>
+    <div class="entry-tags">
+      <span class="sev sev-medium">medium</span>
+      <span class="basis mono">no_path_search_exhaustive</span>
+      <span class="repro" title="Same fingerprint in both runs">🔁 Reproduced in MR !2 + MR !3 · identical fingerprint</span>
+    </div>
+  </header>
+  <section class="path-panel not_reachable">
+    <p class="panel-label"><span>attack surface</span>
+      <span class="flowtip">walk</span><span>vulnerable definition</span></p>
+    <ol class="path-flow empty">
+<li class="node entry"><span class="node-role">attack surface</span><span class="node-body"><span class="node-icon" aria-hidden="true">◉</span><span class="node-name">declared entry points</span></span></li><li class="connector severed" aria-hidden="true"><span class="wire"></span><span class="cut">&#10005;</span><span class="connector-label">no path within bounds</span></li><li class="node safe"><span class="node-role">vulnerable def</span><span class="node-body"><span class="node-icon" aria-hidden="true">⌀</span><span class="node-name">scripts/create_issues.js</span></span></li>
+</ol>
+    <p class="score-line">risk score
+      <strong>8</strong>
+      <span class="mono">medium_severity +8</span></p>
+  </section>
+  <details class="evidence">
+    <summary><span class="seal">&#9974;</span> certificate &amp; receipt
+      <code>d457ba33eef89e2e</code></summary>
+    <div class="grid">
+      <section class="evidence-panel">
+        <h4>Receipt</h4>
+        <table><tr><th>artifact</th><td>mr2-reachgate-receipts.json</td></tr><tr><th>occurrence_id</th><td>demo-pathtraversal</td></tr><tr><th>basis</th><td>no_path_search_exhaustive</td></tr><tr><th>fingerprint</th><td>d457ba33eef89e2e</td></tr><tr><th>policy_version</th><td>8eae9f21a3e6</td></tr><tr><th>risk_score</th><td>8</td></tr><tr><th>rule_breakdown</th><td>medium_severity +8</td></tr></table>
+      </section>
+      <section class="evidence-panel">
+        <h4>Evidence flags</h4>
+        <table><tr><th>frontier_exhausted</th><td>True</td></tr><tr><th>api_errors</th><td>0</td></tr><tr><th>max_hops_hit</th><td>False</td></tr><tr><th>visited_cap_hit</th><td>False</td></tr><tr><th>timeout_hit</th><td>False</td></tr><tr><th>strategies_attempted</th><td>graph_edges, imported_symbol</td></tr><tr><th>evidence_modes</th><td>n/a</td></tr></table>
+      </section>
+      <section class="evidence-panel">
+        <h4>Certificate summary</h4>
+        <table><tr><th>strategy</th><td>bounded-bfs-v1</td></tr><tr><th>max_hops</th><td>6</td></tr><tr><th>max_visited</th><td>40</td></tr><tr><th>max_seconds</th><td>120</td></tr><tr><th>entrypoints_checked</th><td>2</td></tr><tr><th>target_definitions_found</th><td>30</td></tr><tr><th>nodes_visited</th><td>23</td></tr><tr><th>orbit_api_calls</th><td>27</td></tr><tr><th>cache_hits</th><td>1</td></tr><tr><th>entrypoint_globs_hash</th><td>a708d332399a</td></tr></table>
+      </section>
+    </div>
+  </details>
+</article>
+
+</section>
+
+
+<section class="verdict unknown">
+  <div class="verdict-head">
+    <h2><span class="slash">&sect;</span>UNKNOWN</h2>
+    <div class="verdict-meta">
+      <span class="count">1 exhibit</span>
+      <strong>honest uncertainty, not safe</strong>
+    </div>
+  </div>
+  
+<article class="entry unknown">
+  <span class="stamp unknown">UNKNOWN</span>
+  <header class="entry-head">
+    <p class="exhibit-no">Exhibit C</p>
+    <h3>Dependency advisory finding (no code to walk)</h3>
+    <div class="entry-tags">
+      <span class="sev sev-high">high</span>
+      <span class="basis mono">insufficient_evidence:no_definitions_indexed</span>
+      <span class="repro mono">Captured in captured UNKNOWN receipt</span>
+    </div>
+  </header>
+  <section class="path-panel unknown">
+    <p class="panel-label"><span>attack surface</span>
+      <span class="flowtip">walk</span><span>vulnerable definition</span></p>
+    <ol class="path-flow empty">
+<li class="node entry"><span class="node-role">attack surface</span><span class="node-body"><span class="node-icon" aria-hidden="true">◉</span><span class="node-name">declared entry points</span></span></li><li class="connector severed" aria-hidden="true"><span class="wire"></span><span class="cut">&#10005;</span><span class="connector-label">evidence insufficient</span></li><li class="node unknown"><span class="node-role">vulnerable def</span><span class="node-body"><span class="node-icon" aria-hidden="true">⌀</span><span class="node-name">gem/puma/CVE-2026-47736.yml</span></span></li>
+</ol>
+    <p class="score-line">risk score
+      <strong>15</strong>
+      <span class="mono">high_severity +15</span></p>
+  </section>
+  <details class="evidence">
+    <summary><span class="seal">&#9974;</span> certificate &amp; receipt
+      <code>f215d5e5e0d416e3</code></summary>
+    <div class="grid">
+      <section class="evidence-panel">
+        <h4>Receipt</h4>
+        <table><tr><th>artifact</th><td>unknown-reachgate-receipt.json</td></tr><tr><th>occurrence_id</th><td>demo-unknown</td></tr><tr><th>basis</th><td>insufficient_evidence:no_definitions_indexed</td></tr><tr><th>fingerprint</th><td>f215d5e5e0d416e3</td></tr><tr><th>policy_version</th><td>8eae9f21a3e6</td></tr><tr><th>risk_score</th><td>15</td></tr><tr><th>rule_breakdown</th><td>high_severity +15</td></tr></table>
+      </section>
+      <section class="evidence-panel">
+        <h4>Evidence flags</h4>
+        <table><tr><th>frontier_exhausted</th><td>False</td></tr><tr><th>api_errors</th><td>0</td></tr><tr><th>max_hops_hit</th><td>False</td></tr><tr><th>visited_cap_hit</th><td>False</td></tr><tr><th>timeout_hit</th><td>False</td></tr><tr><th>strategies_attempted</th><td>n/a</td></tr><tr><th>evidence_modes</th><td>n/a</td></tr></table>
+      </section>
+      <section class="evidence-panel">
+        <h4>Certificate summary</h4>
+        <table><tr><th>strategy</th><td>bounded-bfs-v1</td></tr><tr><th>max_hops</th><td>6</td></tr><tr><th>max_visited</th><td>n/a</td></tr><tr><th>max_seconds</th><td>n/a</td></tr><tr><th>entrypoints_checked</th><td>0</td></tr><tr><th>target_definitions_found</th><td>0</td></tr><tr><th>nodes_visited</th><td>0</td></tr><tr><th>orbit_api_calls</th><td>1</td></tr><tr><th>cache_hits</th><td>0</td></tr><tr><th>entrypoint_globs_hash</th><td>7f553d39d98b</td></tr></table>
+      </section>
+    </div>
+  </details>
+</article>
+
+</section>
+
+  </main>
+  <footer>
+    The offline verifier remains the source of truth: python tools/verify_proof.py.
+  </footer>
+</body>
+</html>
