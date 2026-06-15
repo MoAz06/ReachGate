@@ -21,6 +21,9 @@ dev = [
     "respx>=0.21",
 ]
 
+[project.scripts]
+reachgate = "reachgate.cli:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
