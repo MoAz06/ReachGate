@@ -163,8 +163,10 @@ It checks the captured receipt artifacts below against the verdicts the MR
 comments claim — matching fingerprints across MR !2 and MR !3, exhaustive
 `NOT_REACHABLE`, honest `UNKNOWN`, and zero API errors — and, when present,
 cross-checks the exported OpenVEX and SARIF back against those receipts. See
-[docs/JUDGE_REPLAY.md](docs/JUDGE_REPLAY.md) for the two-minute replay and
-[docs/JUDGE_PACK.md](docs/JUDGE_PACK.md) for the full judge walkthrough.
+[docs/JUDGE_REPLAY.md](docs/JUDGE_REPLAY.md) for the two-minute replay,
+[docs/JUDGE_PACK.md](docs/JUDGE_PACK.md) for the full judge walkthrough, and
+[docs/DEMO_COMMANDS.md](docs/DEMO_COMMANDS.md) for copy-pastable demo commands
+(including the "try to fake green" PASS/FAIL contrast).
 
 To compare two receipt artifacts as a security regression review, run `python tools/diff_receipts.py OLD NEW` (optionally with `--fail-on-new-reachable`).
 
@@ -268,7 +270,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 pytest
 ```
 
-347 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, derived fix-verification proof with markdown output, the machine-checkable Evidence Contract validator, and the judge-proof page generator.
+355 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, derived fix-verification proof with markdown output, the machine-checkable Evidence Contract validator, the fake-green rejection demo fixtures, and the judge-proof page generator.
 
 ## Orbit Notes
 

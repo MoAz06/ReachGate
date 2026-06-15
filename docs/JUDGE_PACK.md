@@ -34,6 +34,7 @@ receipts. The deterministic engine decides; the AI only explains.
 2. **`docs/JUDGE_REPLAY.md`** — the two-minute replay kit (offline check + live merge requests).
 3. **This file (`docs/JUDGE_PACK.md`)** — orientation and Q&A.
 4. **`docs/EVIDENCE_CONTRACT.md`** — the contract: exactly which claims a receipt supports (and which it does not), all enforced by the verifier.
+5. **`docs/DEMO_COMMANDS.md`** — copy-pastable demo commands, including the "try to fake green" PASS/FAIL contrast.
 
 ---
 
