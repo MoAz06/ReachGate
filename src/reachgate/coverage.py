@@ -23,6 +23,7 @@ Standard library only. No network, no token, no dependencies.
 
 from __future__ import annotations
 
+import html
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -229,3 +230,133 @@ def render_json(report: CoverageReport) -> dict:
             "coverage for the target repository.",
         ],
     }
+
+
+_BLIND_SPOTS = (
+    "Reachability is only as complete as the declared entry points "
+    "(reachgate.yml) and the configured search bounds.",
+    "NOT_REACHABLE is scoped to those bounds; it is not a global safety claim.",
+    "Dependency/SCA advisories with no indexed code definition stay UNKNOWN by "
+    "design rather than fake-green.",
+    "Path accuracy depends on Orbit's indexing depth and language coverage for "
+    "the target repository.",
+)
+
+
+def _e(value) -> str:
+    return html.escape(str(value), quote=True)
+
+
+def render_html(report: CoverageReport) -> str:
+    """Static HTML coverage / blind-spot report.
+
+    Self-contained: no JavaScript, no CDN, no external resources -- just inline
+    CSS, so it is safe to open offline or ship inside the evidence capsule. It
+    presents the same data as render_text / render_json: verdict counts, the
+    UNKNOWN reason breakdown with typed next actions, the code-anchor split, and
+    an honest blind-spots section.
+    """
+    verdict_rows = "".join(
+        f"<tr><td>{_e(v)}</td><td class=\"num\">{_e(c)}</td></tr>"
+        for v, c in _ordered_verdicts(report)
+    )
+
+    unknown_blocks = []
+    for reason in sorted(report.unknown_reason_counts):
+        count = report.unknown_reason_counts[reason]
+        guidance = guidance_for_basis(f"insufficient_evidence:{reason}")
+        meaning = guidance.meaning if guidance else ""
+        action = guidance.next_action if guidance else ""
+        unknown_blocks.append(
+            f"<div class=\"reason\"><p class=\"reason-head\">"
+            f"<span class=\"badge\">{_e(count)}</span> "
+            f"<code>{_e(reason)}</code></p>"
+            f"<p class=\"meaning\">{_e(meaning)}</p>"
+            f"<p class=\"action\"><strong>Next action</strong> {_e(action)}</p>"
+            f"</div>"
+        )
+    unknown_html = "".join(unknown_blocks) or "<p>(no UNKNOWN findings)</p>"
+
+    entrypoints = "".join(
+        f"<li><code>{_e(e)}</code></li>" for e in sorted(report.entrypoints_seen)
+    ) or "<li>(none recorded)</li>"
+
+    paths = "".join(
+        f"<li><code>{_e(' -> '.join(p))}</code></li>"
+        for p in report.reachable_paths
+    ) or "<li>(none)</li>"
+
+    blind = "".join(f"<li>{_e(b)}</li>" for b in _BLIND_SPOTS)
+    sources = ", ".join(_e(s) for s in report.sources) or "n/a"
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReachGate coverage / blind-spot report</title>
+<style>
+  body {{ font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    margin: 0; background: #f6f0e1; color: #241d12; line-height: 1.6; }}
+  main {{ max-width: 880px; margin: 0 auto; padding: 32px 24px 64px; }}
+  h1 {{ font-size: 1.7rem; margin: 0 0 4px; }}
+  h2 {{ font-size: 1.2rem; margin: 30px 0 10px; border-bottom: 2px solid #241d12;
+    padding-bottom: 6px; }}
+  .sub {{ color: #6c6049; font-size: .9rem; margin: 0 0 8px; }}
+  table {{ border-collapse: collapse; width: 100%; max-width: 360px; }}
+  th, td {{ text-align: left; padding: 7px 10px; border-bottom: 1px solid #d6c9a9; }}
+  td.num {{ text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }}
+  code {{ font-family: "Courier New", monospace; background: #efe6d2; padding: 1px 5px; }}
+  .reason {{ border: 1px solid #d6c9a9; border-left: 4px solid #8f6410;
+    background: #efe4c8; padding: 12px 14px; margin: 10px 0; }}
+  .reason-head {{ margin: 0 0 6px; }}
+  .badge {{ display: inline-block; min-width: 22px; text-align: center;
+    background: #8f6410; color: #f6f0e1; border-radius: 3px; padding: 0 6px;
+    font-weight: 700; }}
+  .meaning {{ margin: 4px 0; }}
+  .action strong {{ text-transform: uppercase; font-size: .7rem; letter-spacing: .08em;
+    color: #8f6410; margin-right: 6px; }}
+  ul {{ margin: 6px 0; padding-left: 20px; }}
+  .anchor {{ display: flex; gap: 24px; flex-wrap: wrap; }}
+  .anchor div {{ background: #efe6d2; border: 1px solid #d6c9a9; padding: 10px 16px; }}
+  .anchor .big {{ font-size: 1.6rem; font-weight: 700; }}
+  footer {{ margin-top: 30px; padding-top: 14px; border-top: 1px solid #d6c9a9;
+    color: #6c6049; font-size: .82rem; }}
+</style>
+</head>
+<body>
+<main>
+  <h1>ReachGate coverage / blind-spot report</h1>
+  <p class="sub">sources: {sources} &middot; findings analyzed: {_e(report.total_findings)}</p>
+
+  <h2>Verdicts</h2>
+  <table><tr><th>verdict</th><th class="num">count</th></tr>{verdict_rows}</table>
+
+  <h2>Code anchor &mdash; can a walk even start?</h2>
+  <div class="anchor">
+    <div><span class="big">{_e(report.with_location)}</span><br>with code location</div>
+    <div><span class="big">{_e(report.without_location)}</span><br>without code location</div>
+    <div><span class="big">{_e(report.advisory_like)}</span><br>dependency/SCA-like</div>
+  </div>
+
+  <h2>Entry points observed</h2>
+  <ul>{entrypoints}</ul>
+
+  <h2>Reachable path evidence</h2>
+  <ul>{paths}</ul>
+
+  <h2>UNKNOWN reasons &mdash; why evidence was insufficient</h2>
+  {unknown_html}
+
+  <h2>Blind spots / limitations (honest by design)</h2>
+  <ul>{blind}</ul>
+
+  <footer>
+    Derived only from the captured receipts, offline. NOT_REACHABLE is scoped to
+    the configured search bounds; UNKNOWN is never presented as safe. Advisory by
+    default &mdash; the deterministic engine decides, the AI only explains.
+  </footer>
+</main>
+</body>
+</html>
+"""

@@ -133,9 +133,19 @@ def cmd_coverage(args) -> int:
         return 1
 
     if args.format == "json":
-        print(json.dumps(coverage_mod.render_json(report), indent=2, ensure_ascii=False))
+        rendered = json.dumps(coverage_mod.render_json(report), indent=2, ensure_ascii=False) + "\n"
+    elif args.format == "html":
+        rendered = coverage_mod.render_html(report)
     else:
-        print(coverage_mod.render_text(report), end="")
+        rendered = coverage_mod.render_text(report)
+
+    if args.output:
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(rendered, encoding="utf-8")
+        print(f"wrote {out}")
+    else:
+        print(rendered, end="")
     return 0
 
 
@@ -183,6 +193,144 @@ def cmd_proof(args) -> int:
     return _run_tool_main("build_judge_proof", args.tool_args)
 
 
+def cmd_capsule(args) -> int:
+    from . import capsule as capsule_mod
+
+    if args.capsule_command != "build":
+        print("error: unknown capsule command (try `reachgate capsule build`)",
+              file=sys.stderr)
+        return 2
+    try:
+        root = _require_repo()
+    except _RepoUnavailable as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    output = Path(args.output) if args.output else root / "dist" / capsule_mod.DEFAULT_CAPSULE_NAME
+    try:
+        summary = capsule_mod.build_capsule(
+            root, output, regenerate=not args.no_regenerate
+        )
+    except capsule_mod.CapsuleError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"wrote {summary['output']} ({summary['member_count']} members)")
+    for arc in summary["included"]:
+        print(f"  + {arc}")
+    for arc in summary["skipped"]:
+        print(f"  - skipped (absent): {arc}")
+    print("This capsule is generated and untracked (dist/ is gitignored).")
+    return 0
+
+
+def cmd_judge(args) -> int:
+    """One-command judge demo: verify -> exports -> manifest -> proof page.
+
+    Pure orchestration of the existing offline commands; prints each step and
+    ends with the path to the judge-proof HTML (it never opens a browser).
+    """
+    try:
+        root = _require_repo()
+    except _RepoUnavailable as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    steps = [
+        ("Verifying receipts + cross-checking OpenVEX/SARIF", "verify_proof", None),
+        ("Exporting OpenVEX (CVE/SCA)", "export_vex", []),
+        ("Exporting SARIF 2.1.0 (SAST/code-flow)", "export_sarif", []),
+        ("Building sha256 evidence manifest", "build_evidence_manifest", []),
+        ("Building offline judge-proof HTML", "build_judge_proof", []),
+    ]
+    for i, (label, module_name, argv) in enumerate(steps, 1):
+        print(f"{i}. {label}...")
+        try:
+            module = _load_tool(root, module_name)
+        except _RepoUnavailable as exc:
+            print(f"   error: {exc}", file=sys.stderr)
+            return 2
+        rc = int(module.main() or 0) if argv is None else int(module.main(argv) or 0)
+        if rc != 0:
+            print(f"   step failed (exit {rc})", file=sys.stderr)
+            return rc
+
+    proof_path = root / "docs" / "judge-proof.html"
+    print(f"{len(steps) + 1}. Done. Open the judge proof in a browser:")
+    print(f"   {proof_path}")
+    print("   (no browser is opened automatically; verify offline with "
+          "`reachgate verify`)")
+    return 0
+
+
+def cmd_policy(args) -> int:
+    if args.policy_command != "explain":
+        print("error: unknown policy command (try `reachgate policy explain`)",
+              file=sys.stderr)
+        return 2
+    from . import coverage as coverage_mod  # reuse its loader (CoverageError)
+
+    # Resolve a receipt to read the policy from.
+    if args.receipt:
+        receipt_path = Path(args.receipt)
+    else:
+        root = _find_repo_root()
+        if root is None:
+            print(
+                "error: no --receipt given and no repo checkout found.\n"
+                "  Pass a receipt: reachgate policy explain --receipt <file.json>",
+                file=sys.stderr,
+            )
+            return 2
+        receipt_path = root / "docs" / "proof" / "mr2-reachgate-receipts.json"
+
+    import json as _json
+    try:
+        data = _json.loads(receipt_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"error: {receipt_path.name}: file not found", file=sys.stderr)
+        return 1
+    except _json.JSONDecodeError as exc:
+        print(f"error: {receipt_path.name}: invalid JSON ({exc})", file=sys.stderr)
+        return 1
+
+    policy = data.get("policy")
+    if not isinstance(policy, dict):
+        print(f"error: {receipt_path.name}: no policy block in receipt",
+              file=sys.stderr)
+        return 1
+
+    print("ReachGate policy (from receipt)")
+    print(f"  source receipt: {receipt_path.name}")
+    print(f"  policy version: {policy.get('version', 'n/a')}")
+    print(f"  REACHABLE threshold: {policy.get('threshold', 'n/a')}")
+    rules = policy.get("rules") or []
+    if rules:
+        print("  rules (weights from the receipt's recorded policy):")
+        for rule in rules:
+            print(f"    +{rule.get('weight', '?')} {rule.get('name', '?')}")
+    # Search bounds are recorded per-finding in the certificate, not in the
+    # policy block -- be explicit about provenance instead of overclaiming.
+    bounds = None
+    for finding in data.get("findings") or []:
+        cert = finding.get("certificate") or {}
+        if isinstance(cert.get("bounds"), dict):
+            bounds = cert["bounds"]
+            break
+    if bounds:
+        print("  search bounds (from a finding certificate in this receipt):")
+        for key in ("max_hops", "max_visited", "max_seconds"):
+            if key in bounds:
+                print(f"    {key} = {bounds[key]}")
+    print("")
+    print("Provenance: version, threshold, and rule weights above are read "
+          "directly from the receipt's recorded policy block. Search bounds "
+          "are read from a finding's certificate in the same receipt. Values "
+          "not present in the receipt are shown as n/a rather than guessed; "
+          "the live engine/config may differ if it has since changed.")
+    return 0
+
+
 def cmd_scan(args) -> int:
     print(
         "error: `reachgate scan` is intentionally not available in the offline "
@@ -218,8 +366,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Receipt JSON files. Defaults to the captured docs/proof receipts.",
     )
     p_cov.add_argument(
-        "--format", choices=("text", "json"), default="text",
+        "--format", choices=("text", "json", "html"), default="text",
         help="Output format (default: text).",
+    )
+    p_cov.add_argument(
+        "--output", default=None,
+        help="Write to a file instead of stdout (recommended for html).",
     )
     p_cov.set_defaults(func=cmd_coverage)
 
@@ -250,6 +402,31 @@ def build_parser() -> argparse.ArgumentParser:
     p_proof.add_argument("tool_args", nargs=argparse.REMAINDER,
                          help="Args passed through to tools/build_judge_proof.py.")
     p_proof.set_defaults(func=cmd_proof)
+
+    p_cap = sub.add_parser(
+        "capsule",
+        help="Build a portable, offline-verifiable evidence capsule (zip).")
+    p_cap.add_argument("capsule_command", choices=("build",), metavar="build",
+                       help="Capsule sub-command (currently: build).")
+    p_cap.add_argument("--output", default=None,
+                       help="Output zip path (default: dist/reachgate-evidence-capsule.zip).")
+    p_cap.add_argument("--no-regenerate", action="store_true",
+                       help="Bundle artifacts as-is instead of rebuilding them from receipts.")
+    p_cap.set_defaults(func=cmd_capsule)
+
+    p_judge = sub.add_parser(
+        "judge",
+        help="One-command judge demo: verify -> exports -> manifest -> proof.")
+    p_judge.set_defaults(func=cmd_judge)
+
+    p_pol = sub.add_parser(
+        "policy", help="Inspect the recorded policy (read-only).")
+    p_pol.add_argument("policy_command", choices=("explain",), metavar="explain",
+                       help="Policy sub-command (currently: explain).")
+    p_pol.add_argument("--receipt", default=None,
+                       help="Receipt JSON to read the policy from "
+                            "(default: the captured MR !2 receipt).")
+    p_pol.set_defaults(func=cmd_policy)
 
     p_scan = sub.add_parser(
         "scan", help="(live-only) Walk Orbit for findings. Not in the offline CLI.")
