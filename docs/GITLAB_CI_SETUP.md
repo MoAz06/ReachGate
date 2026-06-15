@@ -82,6 +82,26 @@ include:
     ref: main
 ```
 
+## Option C — drop-in template (just the triage job)
+
+A standalone, copy-paste template with only the advisory triage job lives at
+`templates/gitlab/reachgate.yml`:
+
+```yaml
+# .gitlab-ci.yml
+include:
+  - local: templates/gitlab/reachgate.yml
+```
+
+Or include it straight from this project:
+
+```yaml
+include:
+  - project: 'gitlab-ai-hackathon/transcend/39037247'
+    file: 'templates/gitlab/reachgate.yml'
+    ref: main
+```
+
 ## Bring your own findings
 
 By default the demo path uses two live GitLab docs-site findings. For a

@@ -1,0 +1,60 @@
+# ReachGate drop-in GitLab CI template.
+#
+# Add ReachGate as an ADVISORY merge-request reachability triage job in ~2
+# minutes. It runs on every MR, walks the live GitLab Orbit graph for each
+# finding, and posts a deterministic, fingerprint-idempotent receipt. It is
+# non-blocking (allow_failure: true), so it never blocks a merge on its own.
+#
+# Usage in your .gitlab-ci.yml:
+#
+#   include:
+#     - local: templates/gitlab/reachgate.yml
+#
+#   # or, from this project:
+#   include:
+#     - project: 'gitlab-ai-hackathon/transcend/39037247'
+#       file: 'templates/gitlab/reachgate.yml'
+#       ref: main
+#
+# Requirements:
+#   - GITLAB_TOKEN: a masked (ideally protected) CI/CD variable with api scope.
+#   - reachgate.yml in your repo declaring your attack surface (entry points).
+#     Validate it first: python tools/reachgate_doctor.py --config reachgate.yml
+#
+# This is the LIVE workflow (it needs a token and network). Verify the captured
+# evidence offline afterwards with `reachgate verify` / python tools/verify_proof.py.
+#
+# Notes:
+#   - NOT_REACHABLE is scoped to the configured search bounds recorded in the
+#     certificate; it is not a global safety claim.
+#   - The MR path is comment-only and idempotent: reruns update in place and
+#     never duplicate comments; it creates no work items.
+#   - Advisory by default. Treat receipts as evidence to review, not a certified
+#     gate. To enforce, gate on tools/diff_receipts.py --fail-on-new-reachable.
+
+stages:
+  - security-triage
+
+reachgate-triage:
+  stage: security-triage
+  image: python:3.11-slim
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  variables:
+    GITLAB_URL: "https://gitlab.com"
+    GITLAB_PROJECT_ID: $CI_PROJECT_ID
+    GITLAB_MR_IID: $CI_MERGE_REQUEST_IID
+    # Bring your own findings (optional): point at a GitLab SAST report or a
+    # native findings JSON, and load the attack surface from reachgate.yml.
+    # REACHGATE_FINDINGS_FILE: "gl-sast-report.json"
+    # REACHGATE_CONFIG: "reachgate.yml"
+  before_script:
+    - pip install --quiet httpx pyyaml
+  script:
+    - python tools/mr_triage.py
+  artifacts:
+    paths:
+      - reachgate-receipts.json
+    when: always
+    expire_in: 30 days
+  allow_failure: true
