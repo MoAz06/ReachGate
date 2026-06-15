@@ -288,4 +288,4 @@ Building ReachGate surfaced Orbit behavior that is not in the docs:
 
 ## License
 
-MIT
+MIT. Copyright (c) 2026 Mohamed Azahrioui.
