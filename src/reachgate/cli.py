@@ -379,6 +379,49 @@ def cmd_fixcheck(args) -> int:
     return 0
 
 
+def cmd_contract_check(args) -> int:
+    """Validate receipt artifacts against the Evidence Contract (offline).
+
+    Makes docs/EVIDENCE_CONTRACT.md enforceable: it checks that the claims a
+    receipt already carries are allowed by the contract. It never re-decides a
+    verdict and never calls GitLab/Orbit. Exit code is non-zero only when a
+    receipt overclaims (contract FAIL); warnings alone exit 0.
+    """
+    from . import contract_check as cc
+
+    overall_fail = False
+    chunks: list[str] = []
+    multi = len(args.receipts) > 1
+    for path in args.receipts:
+        try:
+            result = cc.check_file(path)
+        except cc.ContractCheckError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+
+        if result.overall == cc.FAIL:
+            overall_fail = True
+
+        if args.format == "json":
+            chunks.append(cc.render_json(result))
+        elif args.format == "markdown":
+            chunks.append(cc.render_markdown(result, source=path))
+        else:
+            chunks.append(cc.render_text(result, source=path))
+
+    rendered = ("\n" if multi else "").join(chunks)
+
+    if args.output:
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(rendered, encoding="utf-8")
+        print(f"wrote {out}")
+    else:
+        print(rendered, end="")
+
+    return 1 if overall_fail else 0
+
+
 def cmd_scan(args) -> int:
     print(
         "error: `reachgate scan` is intentionally not available in the offline "
@@ -500,6 +543,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write to a file instead of stdout (writes no tracked artifact by default).",
     )
     p_fix.set_defaults(func=cmd_fixcheck)
+
+    p_cc = sub.add_parser(
+        "contract-check",
+        help="Validate receipt artifacts against the Evidence Contract (offline).",
+    )
+    p_cc.add_argument("receipts", nargs="+",
+                      help="one or more receipt JSON files to validate")
+    p_cc.add_argument(
+        "--format", choices=("text", "json", "markdown"), default="text",
+        help="Output format (default: text).",
+    )
+    p_cc.add_argument(
+        "--output", default=None,
+        help="Write to a file instead of stdout (writes no tracked artifact by default).",
+    )
+    p_cc.set_defaults(func=cmd_contract_check)
 
     p_scan = sub.add_parser(
         "scan", help="(live-only) Walk Orbit for findings. Not in the offline CLI.")
