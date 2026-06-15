@@ -1,0 +1,47 @@
+{
+  "_fixture": "SYNTHETIC DEMO FIXTURE — not a live captured proof artifact. See tests/fixtures/fixcheck/README.md.",
+  "schema_version": "1.0",
+  "policy": {
+    "version": "8eae9f21a3e6",
+    "threshold": 50,
+    "rules": [
+      {"name": "path_exists", "weight": 50},
+      {"name": "direct_import", "weight": 20},
+      {"name": "high_severity", "weight": 15}
+    ]
+  },
+  "findings": [
+    {
+      "verdict": "NOT_REACHABLE",
+      "verdict_basis": "no_path_search_exhaustive",
+      "risk_score": 15,
+      "path": [],
+      "hops": 0,
+      "entry_point": null,
+      "vulnerable_file": "src/services/fetch_remote.js",
+      "vulnerable_definition": "fetchRemote",
+      "occurrence_id": "demo-fix-ssrf",
+      "occurrence_name": "Server-side request forgery (SSRF)",
+      "severity": "high",
+      "fingerprint": "3333cccc4444dddd",
+      "certificate": {
+        "strategy": "bounded-bfs-v1",
+        "policy_version": "8eae9f21a3e6",
+        "bounds": {"max_hops": 6, "max_visited": 40, "max_seconds": 120},
+        "entrypoints_checked": 1,
+        "target_definitions_found": 12,
+        "nodes_visited": 9,
+        "max_hops_hit": false,
+        "visited_cap_hit": false,
+        "timeout_hit": false,
+        "frontier_exhausted": true,
+        "api_errors": 0,
+        "orbit_api_calls": 11,
+        "cache_hits": 2,
+        "strategies_attempted": ["graph_edges", "imported_symbol"],
+        "evidence_modes": [],
+        "entrypoint_globs_hash": "deadbeef0001"
+      }
+    }
+  ]
+}

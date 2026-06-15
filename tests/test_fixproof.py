@@ -366,3 +366,146 @@ def test_real_mr2_vs_mr3_is_all_unchanged():
     assert proof["summary"][fixproof.REACHABILITY_INTRODUCED] == 0
     for f in proof["findings"]:
         assert f["classification"] == fixproof.UNCHANGED
+
+
+# --- markdown rendering ----------------------------------------------------
+
+def test_markdown_shows_reachability_removed_and_honesty_note():
+    before = _artifact(_reachable("x"))
+    after = _artifact(_exhaustive_not_reachable("x"))
+    md = fixproof.render_markdown(
+        fixproof.compare(before, after),
+        before_path="before.json", after_path="after.json",
+    )
+    assert "## ReachGate fix verification" in md
+    assert "reachability_removed" in md
+    assert "before.json" in md and "after.json" in md
+    # The exhaustive-only honesty sentence must be present verbatim.
+    assert fixproof.EXHAUSTIVE_NOTE in md
+    assert fixproof.NOT_PROOF_NOTE in md
+
+
+def _md_classified_removed(proof) -> bool:
+    """True if any finding row is actually classified reachability_removed.
+
+    The summary table always lists every status label (with a count), so we
+    check the per-finding classification rather than the label's mere presence.
+    """
+    return any(
+        f["classification"] == fixproof.REACHABILITY_REMOVED
+        for f in proof["findings"]
+    )
+
+
+def test_markdown_unknown_is_incomparable_never_fixed():
+    before = _artifact(_reachable("x"))
+    after = _artifact(_unknown("x"))
+    proof = fixproof.compare(before, after)
+    md = fixproof.render_markdown(proof)
+    assert "incomparable" in md
+    assert not _md_classified_removed(proof)
+    assert proof["summary"][fixproof.REACHABILITY_REMOVED] == 0
+    # UNKNOWN must never be framed as fixed/safe; the only "fixed" mention is
+    # the honesty note that says it is NOT treated as fixed.
+    low = md.lower()
+    assert "is safe" not in low
+    assert "never treated as fixed" in low
+
+
+def test_markdown_policy_mismatch_is_incomparable():
+    before = _artifact(_reachable("x"), policy_version=POLICY_A)
+    after = _artifact(_exhaustive_not_reachable("x"), policy_version=POLICY_B)
+    proof = fixproof.compare(before, after)
+    md = fixproof.render_markdown(proof)
+    assert "incomparable" in md
+    assert not _md_classified_removed(proof)
+    assert proof["summary"][fixproof.REACHABILITY_REMOVED] == 0
+
+
+def test_markdown_non_exhaustive_after_is_incomparable():
+    before = _artifact(_reachable("x"))
+    after = _artifact(_weak_not_reachable("x"))
+    proof = fixproof.compare(before, after)
+    md = fixproof.render_markdown(proof)
+    assert "incomparable" in md
+    assert not _md_classified_removed(proof)
+    assert proof["summary"][fixproof.REACHABILITY_REMOVED] == 0
+
+
+def test_markdown_is_byte_stable():
+    before = _artifact(_reachable("x"))
+    after = _artifact(_exhaustive_not_reachable("x"))
+    a = fixproof.render_markdown(fixproof.compare(before, after))
+    b = fixproof.render_markdown(fixproof.compare(before, after))
+    assert a == b
+    assert a.endswith("\n")
+
+
+# --- demo fixture (honest, synthetic) --------------------------------------
+
+def _fixture_dir():
+    root = cli._find_repo_root()
+    assert root is not None
+    return root / "tests" / "fixtures" / "fixcheck"
+
+
+def test_demo_fixture_proves_reachability_removed():
+    d = _fixture_dir()
+    proof = fixproof.fixcheck(
+        str(d / "before-reachable.json"),
+        str(d / "after-not-reachable-exhaustive.json"),
+    )
+    assert proof["summary"][fixproof.REACHABILITY_REMOVED] == 1
+    by_occ = {f["occurrence_id"]: f for f in proof["findings"]}
+    assert by_occ["demo-fix-ssrf"]["classification"] == fixproof.REACHABILITY_REMOVED
+
+
+def test_demo_fixtures_are_labeled_synthetic():
+    d = _fixture_dir()
+    for name in ("before-reachable.json", "after-not-reachable-exhaustive.json"):
+        data = json.loads((d / name).read_text(encoding="utf-8"))
+        assert "_fixture" in data
+        assert "SYNTHETIC" in data["_fixture"].upper()
+
+
+def test_cli_markdown_output_on_demo_fixture(capsys):
+    d = _fixture_dir()
+    rc = cli.main([
+        "fixcheck",
+        str(d / "before-reachable.json"),
+        str(d / "after-not-reachable-exhaustive.json"),
+        "--format", "markdown",
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "## ReachGate fix verification" in out
+    assert "reachability_removed" in out
+
+
+def test_cli_markdown_output_to_temp_path_no_tracked_mutation(tmp_path):
+    d = _fixture_dir()
+    root = cli._find_repo_root()
+    tracked = [
+        root / "docs" / "proof" / "mr2-reachgate-receipts.json",
+        root / "docs" / "judge-proof.html",
+    ]
+    before_mtimes = {
+        p: (p.stat().st_mtime_ns if p.exists() else None) for p in tracked
+    }
+
+    out_path = tmp_path / "fix.md"
+    rc = cli.main([
+        "fixcheck",
+        str(d / "before-reachable.json"),
+        str(d / "after-not-reachable-exhaustive.json"),
+        "--format", "markdown",
+        "--output", str(out_path),
+    ])
+    assert rc == 0
+    assert out_path.exists()
+    assert "reachability_removed" in out_path.read_text(encoding="utf-8")
+
+    after_mtimes = {
+        p: (p.stat().st_mtime_ns if p.exists() else None) for p in tracked
+    }
+    assert before_mtimes == after_mtimes
