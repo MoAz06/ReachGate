@@ -151,5 +151,7 @@ not just asserted.
 - Reachability is only as complete as the declared entry points and Orbit's
   indexing/language coverage.
 
-See the [Judge Pack](JUDGE_PACK.md) for a guided walkthrough and the
-[GitLab CI setup](GITLAB_CI_SETUP.md) for the live workflow.
+See the [Evidence Contract](EVIDENCE_CONTRACT.md) for exactly which claims a
+receipt supports for downstream consumers, the [Judge Pack](JUDGE_PACK.md) for a
+guided walkthrough, and the [GitLab CI setup](GITLAB_CI_SETUP.md) for the live
+workflow.

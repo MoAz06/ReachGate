@@ -33,6 +33,7 @@ receipts. The deterministic engine decides; the AI only explains.
 1. **`docs/judge-proof.html`** — the visual case file. Open it in any browser, fully offline (no JS, no CDN). Each verdict is a live exhibit rendered from the captured receipts, with a "Portable evidence" section showing the four downstream evidence pillars.
 2. **`docs/JUDGE_REPLAY.md`** — the two-minute replay kit (offline check + live merge requests).
 3. **This file (`docs/JUDGE_PACK.md`)** — orientation and Q&A.
+4. **`docs/EVIDENCE_CONTRACT.md`** — the contract: exactly which claims a receipt supports (and which it does not), all enforced by the verifier.
 
 ---
 

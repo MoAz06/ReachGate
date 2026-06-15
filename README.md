@@ -90,7 +90,7 @@ That last rule is the point: ReachGate refuses to emit a clean VEX `not_affected
 
 ## Portable evidence layer — not just a scanner
 
-ReachGate is designed as an **offline-verifiable evidence layer**: the same receipts are emitted as replayable, standards-aligned evidence that downstream tooling consumes directly. The deterministic engine decides, the AI only explains, and every exported claim is cross-checked back against the receipts.
+ReachGate is designed as an **offline-verifiable evidence layer**: the same receipts are emitted as replayable, standards-aligned evidence that downstream tooling consumes directly. The deterministic engine decides, the AI only explains, and every exported claim is cross-checked back against the receipts. The [Evidence Contract](docs/EVIDENCE_CONTRACT.md) states exactly which claims downstream tools may draw from a receipt, and which they may not.
 
 - **OpenVEX** (`tools/export_vex.py` → `docs/proof/reachgate.openvex.json`) — CVE/SCA exploitability context (see above).
 - **SARIF 2.1.0** (`tools/export_sarif.py` → `docs/proof/reachgate.sarif.json`) — SAST/code-flow evidence: a REACHABLE path becomes a SARIF `codeFlow`/`threadFlow` over the real graph, NOT_REACHABLE stays "within configured search bounds", and UNKNOWN is a typed evidence gap, never presented as safe. Source locations are only emitted where the receipt carries a file — never invented.

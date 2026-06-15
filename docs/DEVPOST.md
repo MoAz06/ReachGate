@@ -28,6 +28,8 @@ The verdict is deterministic: `risk_score = sum of fixed rule weights` (path exi
 
 Every receipt carries a collapsible **reachability certificate** — policy version hash, search bounds, nodes visited, API calls, evidence modes, and whether any bound cut the walk short — plus a stable **fingerprint** computed only from the finding identity, verdict, path, policy version, and declared attack surface (never timing or call counts). The MR CI job uses that fingerprint to upsert comments: reruns skip unchanged receipts instead of posting duplicates, while still uploading `reachgate-receipts.json` with every receipt and full certificate as a pipeline artifact.
 
+The [Evidence Contract](EVIDENCE_CONTRACT.md) spells out exactly which claims a receipt supports — and which it does not — with every invariant enforced by the offline verifier.
+
 ### How I built it
 
 Three integrated layers, all running on live Orbit data:
