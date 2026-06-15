@@ -136,6 +136,19 @@ change when a finding is fixed). `UNKNOWN` is never "fixed", and a different
 policy version is never a fix or a regression — it is incomparable. By default
 it writes no tracked artifact.
 
+## Contract check → enforceable evidence rules
+
+`reachgate contract-check RECEIPT.json` makes the [Evidence
+Contract](EVIDENCE_CONTRACT.md) enforceable on arbitrary receipts: a downstream
+CI job can validate that a receipt only makes claims the contract allows, and
+exit non-zero when one overclaims (for example a non-exhaustive `NOT_REACHABLE`
+presented as safe-within-bounds). `UNKNOWN` is always validated as an evidence
+gap, never as safe. It re-decides nothing and makes no live calls.
+
+```bash
+reachgate contract-check docs/proof/mr2-reachgate-receipts.json --format json
+```
+
 ## The offline verifier → falsifiability
 
 `reachgate verify` (a.k.a. `python tools/verify_proof.py`) is standard library

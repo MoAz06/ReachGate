@@ -121,6 +121,7 @@ reachgate manifest                 # sha256 evidence manifest
 reachgate proof                    # offline judge-proof HTML page
 reachgate policy explain           # read-only view of the recorded policy
 reachgate fixcheck BEFORE AFTER    # prove the reachability delta between two receipts
+reachgate contract-check RECEIPT.json   # enforce the Evidence Contract on receipts
 reachgate judge                    # one command: verify -> exports -> manifest -> proof
 reachgate capsule build            # portable evidence capsule (zip) in dist/
 ```
@@ -267,7 +268,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 pytest
 ```
 
-319 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, derived fix-verification proof with markdown output, and the judge-proof page generator.
+347 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, derived fix-verification proof with markdown output, the machine-checkable Evidence Contract validator, and the judge-proof page generator.
 
 ## Orbit Notes
 

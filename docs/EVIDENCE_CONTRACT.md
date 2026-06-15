@@ -189,6 +189,27 @@ ReachGate explicitly does **not** claim to be any of the following:
 
 ---
 
+## Machine-check this contract
+
+This contract is not docs-only: it is enforceable on arbitrary receipt
+artifacts. `reachgate contract-check RECEIPT.json` (or
+`python -m reachgate.contract_check` logic via the CLI) validates that the
+claims a receipt carries are allowed by the rules above — without re-deciding
+any verdict or calling GitLab/Orbit.
+
+```bash
+reachgate contract-check docs/proof/mr2-reachgate-receipts.json
+reachgate contract-check RECEIPT.json --format json
+reachgate contract-check RECEIPT.json --format markdown --output report.md
+```
+
+Each finding gets `pass` / `warn` / `fail`; the run exits non-zero only when a
+receipt **overclaims** (for example a `NOT_REACHABLE` whose search did not run
+to completion being presented as a safe-within-bounds negative). `UNKNOWN` is
+always validated as an evidence gap and is never marked safe. Don't trust the
+marketing — run the check and verify whether a receipt is allowed to claim what
+it claims.
+
 ## Downstream consumer rules
 
 For tools and CI integrating ReachGate evidence:
@@ -206,3 +227,6 @@ For tools and CI integrating ReachGate evidence:
 - **Verify receipts before trusting exported evidence.** Run
   `tools/verify_proof.py` (or `reachgate verify`) before relying on the
   OpenVEX, SARIF, or evidence capsule derived from them.
+- **Enforce this contract in CI** with `reachgate contract-check RECEIPT.json`:
+  it exits non-zero if a receipt overclaims, so an overclaiming negative cannot
+  pass a gate unnoticed.
