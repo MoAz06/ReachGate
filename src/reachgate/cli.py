@@ -345,6 +345,36 @@ def cmd_policy(args) -> int:
     return 0
 
 
+def cmd_fixcheck(args) -> int:
+    """Compare two receipt artifacts and prove the reachability delta.
+
+    A derived, offline layer over existing receipts: it never re-decides a
+    verdict and never calls GitLab/Orbit. By default it writes nothing to the
+    tracked proof artifacts; output goes to stdout unless --output is given.
+    """
+    from . import fixproof as fixproof_mod
+
+    try:
+        proof = fixproof_mod.fixcheck(args.before, args.after)
+    except fixproof_mod.FixProofError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    if args.format == "json":
+        rendered = fixproof_mod.render_json(proof)
+    else:
+        rendered = fixproof_mod.render_text(proof)
+
+    if args.output:
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(rendered, encoding="utf-8")
+        print(f"wrote {out}")
+    else:
+        print(rendered, end="")
+    return 0
+
+
 def cmd_scan(args) -> int:
     print(
         "error: `reachgate scan` is intentionally not available in the offline "
@@ -449,6 +479,23 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Receipt JSON to read the policy from "
                             "(default: the captured MR !2 receipt).")
     p_pol.set_defaults(func=cmd_policy)
+
+    p_fix = sub.add_parser(
+        "fixcheck",
+        help="Compare two receipt artifacts; prove if reachability was "
+             "removed/introduced/unchanged (offline).",
+    )
+    p_fix.add_argument("before", help="path to the BEFORE receipts JSON")
+    p_fix.add_argument("after", help="path to the AFTER receipts JSON")
+    p_fix.add_argument(
+        "--format", choices=("text", "json"), default="text",
+        help="Output format (default: text).",
+    )
+    p_fix.add_argument(
+        "--output", default=None,
+        help="Write to a file instead of stdout (writes no tracked artifact by default).",
+    )
+    p_fix.set_defaults(func=cmd_fixcheck)
 
     p_scan = sub.add_parser(
         "scan", help="(live-only) Walk Orbit for findings. Not in the offline CLI.")
