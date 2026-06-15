@@ -111,6 +111,7 @@ For a guided walkthrough, see the [Judge Pack](docs/JUDGE_PACK.md). All claims a
 Once installed (`pip install -e ".[dev]"`), the offline, deterministic surface is one `reachgate` command:
 
 ```bash
+reachgate --help                  # show the full offline evidence CLI
 reachgate coverage                 # verdict / UNKNOWN-reason / blind-spot report
 reachgate coverage --format html --output coverage.html  # same report as static HTML
 reachgate verify                   # verify receipts + cross-check OpenVEX/SARIF
