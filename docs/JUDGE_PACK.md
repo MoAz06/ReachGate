@@ -70,6 +70,21 @@ reachgate capsule build          # portable evidence capsule -> dist/reachgate-e
 receipts, OpenVEX, SARIF, evidence manifest, judge-proof HTML, this Judge Pack,
 and a `HOW_TO_VERIFY.txt` — a portable bundle a reviewer can verify offline.
 
+Optional (fix verification, offline): `reachgate fixcheck BEFORE AFTER`
+compares two receipt artifacts and proves whether reachability was removed,
+introduced, unchanged, or incomparable. ReachGate can compare two receipt
+artifacts and verify whether reachability was removed **only when the after
+receipt is exhaustive** (frontier exhausted, no bound hit, 0 API errors, same
+policy version); an after `UNKNOWN`, a non-exhaustive `NOT_REACHABLE`, or a
+policy-version change is `incomparable`, never "fixed". Demo idea: run it on the
+two captured idempotency-rerun receipts to show every finding is `unchanged`
+(no spurious fix or regression):
+
+```bash
+reachgate fixcheck docs/proof/mr2-reachgate-receipts.json \
+                   docs/proof/mr3-reachgate-receipts-rerun.json
+```
+
 Expected: `verify_proof.py` (or `reachgate verify`) prints `ReachGate proof
 verified` and exits `0`; the test suite passes.
 

@@ -30,7 +30,7 @@ Most security tools stop at "this vulnerability exists"; ReachGate answers the q
 |---|---|---|---|---|
 | 0:00-0:15 | README title/tagline or Devpost title | Most security tools stop at "this vulnerability exists." ReachGate answers the question reviewers actually need in a merge request: can this vulnerable code be reached from the application's entry points? | Potential Impact, Quality of Idea | Do not say it proves all security risk. |
 | 0:15-0:32 | README "What it does", CI section, or `reachgate.yml` entrypoints | For real projects, the CI job can load GitLab SAST or native JSON findings. You declare the attack surface in `reachgate.yml`, then ReachGate walks Orbit's files, definitions, imports and calls from those entry points to the vulnerable definition. | Technological Implementation, Design and Usability | Do not say ReachGate guesses entry points. |
-| 0:32-0:45 | README architecture or tests line | The key design choice is that the model never decides the verdict. The engine is deterministic: fixed rules, bounded graph search, 282 focused tests, and a receipt explaining the result. | Technological Implementation, Quality of Idea | Do not call the score model confidence. |
+| 0:32-0:45 | README architecture or tests line | The key design choice is that the model never decides the verdict. The engine is deterministic: fixed rules, bounded graph search, 310 focused tests, and a receipt explaining the result. | Technological Implementation, Quality of Idea | Do not call the score model confidence. |
 | 0:45-0:55 | `/reachgate` skill + `agent/system_prompt.md` + Orbit MCP config | ReachGate also runs as a `/reachgate` skill through Orbit MCP. Same deterministic workflow; the agent executes, not decides. | Technological Implementation, Quality of Idea | Do not say the agent decided the verdict. Do not mention work item #3 unless its run log or recording is on screen; work item #5 is the CI/action-flow item, not agentic. |
 | 0:55-1:20 | MR !3 reachable receipt with graph path visible | Back in CI, here is the live MR proof. The SSRF finding is `REACHABLE` because Orbit found a graph path from `content/frontend/404/archives_redirect.js` to `getArchivesVersions`. That path triggers fixed rule weights: path exists, direct import, high severity. | Technological Implementation, Design and Usability | Do not say "the AI found this." |
 | 1:20-1:30 | MR !3 reachable certificate opened | The certificate shows policy version, search bounds, evidence mode, and whether any bound cut the search short. | Technological Implementation, Design and Usability | Do not read every field slowly. |
@@ -72,7 +72,7 @@ Optional if time remains:
 1. MR !2 as older phase-1 proof.
 2. JSON artifact opened in a viewer.
 3. Devpost draft links section.
-4. 282 focused tests line from README.
+4. 310 focused tests line from README.
 
 Cut first if too long:
 

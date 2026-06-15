@@ -107,6 +107,35 @@ reachgate coverage --format json
 Almost no tool shows you its own uncertainty. ReachGate makes that uncertainty
 a structured, actionable surface instead of hiding it.
 
+## Fix verification → before/after receipt delta
+
+`reachgate fixcheck BEFORE AFTER` is a derived, offline layer over two receipt
+artifacts: it consumes the receipts from two runs and proves whether
+reachability was **removed**, **introduced**, left **unchanged**, or is
+**incomparable**. It never re-decides a verdict and never calls Orbit.
+
+ReachGate can compare two receipt artifacts and verify whether reachability was
+removed — **only when the after receipt is exhaustive**:
+
+- `reachability_removed` → before `REACHABLE`, after `NOT_REACHABLE` with an
+  exhaustive search (frontier exhausted, no bound hit, 0 API errors), same
+  policy version
+- `reachability_introduced` → before exhaustively `NOT_REACHABLE` (or absent),
+  after `REACHABLE`
+- `unchanged` → equivalent verdict and evidence on both sides
+- `incomparable` → policy version differs, identity cannot be matched, the
+  after is `UNKNOWN`, or the after `NOT_REACHABLE` is not exhaustive
+
+```bash
+reachgate fixcheck before.json after.json --format json
+```
+
+Findings are matched by their stable `occurrence_id`, not the receipt
+fingerprint (the fingerprint folds in the verdict and path, which by design
+change when a finding is fixed). `UNKNOWN` is never "fixed", and a different
+policy version is never a fix or a regression — it is incomparable. By default
+it writes no tracked artifact.
+
 ## The offline verifier → falsifiability
 
 `reachgate verify` (a.k.a. `python tools/verify_proof.py`) is standard library

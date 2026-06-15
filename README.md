@@ -119,6 +119,7 @@ reachgate export-sarif             # SARIF 2.1.0 from receipts
 reachgate manifest                 # sha256 evidence manifest
 reachgate proof                    # offline judge-proof HTML page
 reachgate policy explain           # read-only view of the recorded policy
+reachgate fixcheck BEFORE AFTER    # prove the reachability delta between two receipts
 reachgate judge                    # one command: verify -> exports -> manifest -> proof
 reachgate capsule build            # portable evidence capsule (zip) in dist/
 ```
@@ -164,6 +165,19 @@ cross-checks the exported OpenVEX and SARIF back against those receipts. See
 [docs/JUDGE_PACK.md](docs/JUDGE_PACK.md) for the full judge walkthrough.
 
 To compare two receipt artifacts as a security regression review, run `python tools/diff_receipts.py OLD NEW` (optionally with `--fail-on-new-reachable`).
+
+### Fix verification
+
+`reachgate fixcheck BEFORE.json AFTER.json` is a derived, offline layer that compares two receipt artifacts and proves whether reachability was **removed**, **introduced**, left **unchanged**, or is **incomparable**. It re-uses existing receipts and never re-decides a verdict or calls Orbit.
+
+It is deliberately conservative: ReachGate can compare two receipt artifacts and verify whether reachability was removed **only when the after receipt is exhaustive**. `reachability_removed` is claimed only when the before verdict is `REACHABLE`, the after verdict is `NOT_REACHABLE` with an exhaustive search (frontier exhausted, no bounds hit, 0 API errors), and the policy version is identical. An after `UNKNOWN`, a non-exhaustive `NOT_REACHABLE`, a different policy version, or an unmatched finding identity is `incomparable` — never "fixed".
+
+```bash
+reachgate fixcheck before.json after.json              # text delta
+reachgate fixcheck before.json after.json --format json --output delta.json
+```
+
+By default it writes nothing to the tracked proof artifacts; output goes to stdout unless `--output` is given.
 
 Open `docs/judge-proof.html` or regenerate it with `python tools/build_judge_proof.py`.
 
@@ -251,7 +265,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 pytest
 ```
 
-282 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, and the judge-proof page generator.
+310 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, derived fix-verification proof, and the judge-proof page generator.
 
 ## Orbit Notes
 
