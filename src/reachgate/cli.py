@@ -362,6 +362,10 @@ def cmd_fixcheck(args) -> int:
 
     if args.format == "json":
         rendered = fixproof_mod.render_json(proof)
+    elif args.format == "markdown":
+        rendered = fixproof_mod.render_markdown(
+            proof, before_path=args.before, after_path=args.after
+        )
     else:
         rendered = fixproof_mod.render_text(proof)
 
@@ -488,8 +492,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_fix.add_argument("before", help="path to the BEFORE receipts JSON")
     p_fix.add_argument("after", help="path to the AFTER receipts JSON")
     p_fix.add_argument(
-        "--format", choices=("text", "json"), default="text",
-        help="Output format (default: text).",
+        "--format", choices=("text", "json", "markdown"), default="text",
+        help="Output format (default: text). markdown is MR-comment ready.",
     )
     p_fix.add_argument(
         "--output", default=None,

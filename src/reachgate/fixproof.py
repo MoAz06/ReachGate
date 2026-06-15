@@ -387,6 +387,103 @@ def render_text(proof: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+# ASCII-only status labels: the markdown is meant to be piped to a file or an
+# MR comment, and must also print cleanly on a Windows (cp1252) console, so we
+# avoid emoji/Unicode that would raise UnicodeEncodeError on stdout.
+_MD_STATUS = {
+    REACHABILITY_REMOVED: "FIXED (reachability_removed)",
+    REACHABILITY_INTRODUCED: "REGRESSION (reachability_introduced)",
+    UNCHANGED: "unchanged",
+    INCOMPARABLE: "incomparable",
+}
+
+# The exhaustive-only honesty sentence, stated once and reused so docs/tests can
+# pin the exact wording. reachability_removed is ONLY valid because the after
+# NOT_REACHABLE was exhaustive under the same policy.
+EXHAUSTIVE_NOTE = (
+    "`reachability_removed` is only claimed because the after verdict is an "
+    "**exhaustive** `NOT_REACHABLE` (frontier exhausted, no bounds hit, 0 API "
+    "errors) under the same policy version."
+)
+NOT_PROOF_NOTE = (
+    "`incomparable` and `UNKNOWN` results are **not** proof of a fix or of "
+    "safety; missing or non-exhaustive evidence is never treated as fixed."
+)
+
+
+def render_markdown(
+    proof: dict[str, Any],
+    *,
+    before_path: str | None = None,
+    after_path: str | None = None,
+) -> str:
+    """Deterministic Markdown report, suitable for an MR comment.
+
+    Shows the before/after artifacts, the policy comparability, and one row per
+    finding (identity, before/after verdict, status, fingerprints, reason). The
+    honesty rules are stated explicitly: reachability_removed only holds for an
+    exhaustive after NOT_REACHABLE under the same policy, and UNKNOWN /
+    incomparable are never presented as fixed or safe. No timestamps, stable
+    ordering — byte-stable for the same inputs.
+    """
+    summary = proof["summary"]
+    policy = proof["policy"]
+    lines: list[str] = []
+
+    lines.append("## ReachGate fix verification")
+    lines.append("")
+    lines.append(f"- **Before artifact:** `{before_path or 'before'}`")
+    lines.append(f"- **After artifact:** `{after_path or 'after'}`")
+    if policy["match"] is False:
+        lines.append(
+            f"- **Policy version:** before `{policy['before']}` != after "
+            f"`{policy['after']}` -> all findings incomparable"
+        )
+    else:
+        version = policy["after"] or policy["before"] or "n/a"
+        lines.append(f"- **Policy version:** `{version}` (matched)")
+    lines.append("")
+
+    lines.append(
+        "| status | counts |"
+        "\n|---|---|"
+    )
+    for key in (
+        REACHABILITY_REMOVED,
+        REACHABILITY_INTRODUCED,
+        UNCHANGED,
+        INCOMPARABLE,
+    ):
+        lines.append(f"| {_MD_STATUS[key]} | {summary.get(key, 0)} |")
+    lines.append("")
+
+    lines.append(
+        "| finding | before | after | status | fingerprint (before -> after) |"
+        "\n|---|---|---|---|---|"
+    )
+    for r in proof["findings"]:
+        status = _MD_STATUS.get(r["classification"], r["classification"])
+        bfp = r.get("before_fingerprint") or "-"
+        afp = r.get("after_fingerprint") or "-"
+        lines.append(
+            f"| `{r['occurrence_id']}` | {r['before_verdict']} | "
+            f"{r['after_verdict']} | {status} | `{bfp}` -> `{afp}` |"
+        )
+    lines.append("")
+
+    lines.append("### Why")
+    for r in proof["findings"]:
+        lines.append(
+            f"- `{r['occurrence_id']}` - **{r['classification']}**: {r['reason']}"
+        )
+    lines.append("")
+
+    lines.append("> " + EXHAUSTIVE_NOTE)
+    lines.append("> ")
+    lines.append("> " + NOT_PROOF_NOTE)
+    return "\n".join(lines) + "\n"
+
+
 def fixcheck(before_path: str, after_path: str) -> dict[str, Any]:
     """Load two receipt artifacts from disk and return the fix-proof dict."""
     before = _load(before_path)
