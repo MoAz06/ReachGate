@@ -35,7 +35,10 @@ def _repo_root() -> Path:
 
 def test_capsule_builds_and_lists_members(tmp_path):
     out = tmp_path / "cap.zip"
-    summary = capsule_mod.build_capsule(_repo_root(), out, regenerate=True)
+    # regenerate=False: bundle the tracked artifacts as-is. The tests must never
+    # write into tracked docs/proof or docs/judge-proof.html (regenerate=True
+    # would run the generators against their default tracked paths).
+    summary = capsule_mod.build_capsule(_repo_root(), out, regenerate=False)
     assert out.exists()
     assert summary["member_count"] >= 8
     names = set(summary["included"])
@@ -50,7 +53,7 @@ def test_capsule_builds_and_lists_members(tmp_path):
 
 def test_capsule_includes_judge_proof_html(tmp_path):
     out = tmp_path / "cap.zip"
-    capsule_mod.build_capsule(_repo_root(), out, regenerate=True)
+    capsule_mod.build_capsule(_repo_root(), out, regenerate=False)
     with zipfile.ZipFile(out) as zf:
         assert "judge-proof.html" in zf.namelist()
 
@@ -59,7 +62,7 @@ def test_capsule_judge_proof_not_in_manifest_hashes(tmp_path):
     """judge-proof.html may ride along, but it must never be a hashed artifact
     in the evidence manifest (no circular generated-artifact dependency)."""
     out = tmp_path / "cap.zip"
-    capsule_mod.build_capsule(_repo_root(), out, regenerate=True)
+    capsule_mod.build_capsule(_repo_root(), out, regenerate=False)
     with zipfile.ZipFile(out) as zf:
         manifest = json.loads(zf.read("proof/reachgate.evidence-manifest.json"))
     hashed = {a["filename"] for a in manifest["artifacts"]}
@@ -85,6 +88,29 @@ def test_capsule_how_to_verify_is_honest(tmp_path):
     assert "advisory by default" in low
 
 
+def test_capsule_regenerate_orchestration_no_side_effects(tmp_path, monkeypatch):
+    """The regenerate=True path runs the four generators. We stub _load_tool so
+    it never writes into tracked docs/ paths, and assert the orchestration."""
+    calls = []
+
+    class _FakeTool:
+        def __init__(self, name):
+            self._name = name
+
+        def main(self, argv=None):
+            calls.append(self._name)
+            return 0
+
+    monkeypatch.setattr(cli, "_load_tool", lambda root, name: _FakeTool(name))
+    out = tmp_path / "cap.zip"
+    capsule_mod.build_capsule(_repo_root(), out, regenerate=True)
+    assert calls == [
+        "export_vex", "export_sarif",
+        "build_evidence_manifest", "build_judge_proof",
+    ]
+    assert out.exists()
+
+
 def test_cmd_capsule_build_writes_to_dist(tmp_path, capsys):
     out = tmp_path / "out.zip"
     rc = cli.main(["capsule", "build", "--output", str(out), "--no-regenerate"])
@@ -104,12 +130,35 @@ def test_cmd_capsule_outside_repo_fails_loudly(monkeypatch, capsys):
 
 # --- judge -----------------------------------------------------------------
 
-def test_judge_runs_all_steps(capsys):
+def test_judge_runs_all_steps(capsys, monkeypatch):
+    """`judge` orchestrates verify -> exports -> manifest -> proof.
+
+    We stub the loaded tool modules so the orchestration is exercised WITHOUT
+    writing into tracked docs/proof or docs/judge-proof.html (the real tools
+    write to default tracked paths). This keeps pytest side-effect-free.
+    """
+    calls = []
+
+    class _FakeTool:
+        def __init__(self, name):
+            self._name = name
+
+        def main(self, argv=None):
+            calls.append(self._name)
+            return 0
+
+    monkeypatch.setattr(cli, "_load_tool",
+                        lambda root, name: _FakeTool(name))
+
     rc = cli.main(["judge"])
     assert rc == 0
+    # All five pipeline steps ran, in order.
+    assert calls == [
+        "verify_proof", "export_vex", "export_sarif",
+        "build_evidence_manifest", "build_judge_proof",
+    ]
     out = capsys.readouterr().out
     assert "Verifying receipts" in out
-    assert "ReachGate proof verified" in out
     assert "judge-proof.html" in out
 
 
