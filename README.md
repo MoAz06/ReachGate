@@ -106,6 +106,21 @@ python tools/verify_proof.py
 
 For a guided walkthrough, see the [Judge Pack](docs/JUDGE_PACK.md). All claims are advisory by default and scoped to the configured search bounds; this is standards-aligned, not a certified gate.
 
+## Command line
+
+Once installed (`pip install -e ".[dev]"`), the offline, deterministic surface is one `reachgate` command:
+
+```bash
+reachgate coverage        # verdict / UNKNOWN-reason / blind-spot report
+reachgate verify          # verify receipts + cross-check OpenVEX/SARIF
+reachgate export-vex      # OpenVEX from receipts
+reachgate export-sarif    # SARIF 2.1.0 from receipts
+reachgate manifest        # sha256 evidence manifest
+reachgate proof           # offline judge-proof HTML page
+```
+
+`reachgate coverage` is the blind-spot report: verdict counts, UNKNOWN reasons with their typed next actions (from `guidance.py`), which findings lack a code anchor, and an honest limitations section — all derived from the captured receipts, offline. `reachgate scan` is intentionally **not** offline: a real scan needs live Orbit and a token, so it is documented as a live workflow via `python -m reachgate.agent` and the CI job (see [GitLab CI setup](docs/GITLAB_CI_SETUP.md)). The CLI is package-safe: the export/verify commands read the repo's `tools/` and `docs/proof/`, and fail loudly with a helpful message when run outside a checkout. See [Integrations](docs/INTEGRATIONS.md) for the evidence-router story.
+
 ## CI/CD integration
 
 Add ReachGate to your pipeline as an advisory MR triage job — it runs on every merge request and posts a deterministic triage receipt automatically. The bundled job is non-blocking (`allow_failure: true`) so it never blocks a merge on its own. The receipts and `reachgate-receipts.json` artifact are gate-ready evidence: `tools/diff_receipts.py --fail-on-new-reachable` can turn a receipt diff into a blocking check when you choose to enforce it. Any `NOT_REACHABLE` verdict remains scoped to the configured search bounds recorded in the certificate.
@@ -232,7 +247,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 pytest
 ```
 
-250 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, and the judge-proof page generator.
+262 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI, the coverage/blind-spot report, and the judge-proof page generator.
 
 ## Orbit Notes
 
