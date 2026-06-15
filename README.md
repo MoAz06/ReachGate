@@ -173,11 +173,12 @@ To compare two receipt artifacts as a security regression review, run `python to
 It is deliberately conservative: ReachGate can compare two receipt artifacts and verify whether reachability was removed **only when the after receipt is exhaustive**. `reachability_removed` is claimed only when the before verdict is `REACHABLE`, the after verdict is `NOT_REACHABLE` with an exhaustive search (frontier exhausted, no bounds hit, 0 API errors), and the policy version is identical. An after `UNKNOWN`, a non-exhaustive `NOT_REACHABLE`, a different policy version, or an unmatched finding identity is `incomparable` — never "fixed".
 
 ```bash
-reachgate fixcheck before.json after.json              # text delta
+reachgate fixcheck before.json after.json                 # text delta
 reachgate fixcheck before.json after.json --format json --output delta.json
+reachgate fixcheck before.json after.json --format markdown   # MR-comment ready
 ```
 
-By default it writes nothing to the tracked proof artifacts; output goes to stdout unless `--output` is given.
+By default it writes nothing to the tracked proof artifacts; output goes to stdout unless `--output` is given. The `markdown` format renders an MR-comment-ready delta (before/after verdicts, status, fingerprints, and the reason). A clearly-labelled **synthetic demo fixture** under `tests/fixtures/fixcheck/` shows the `REACHABLE -> exhaustive NOT_REACHABLE = reachability_removed` workflow without a live dependency; real usage compares before/after receipts from actual runs.
 
 Open `docs/judge-proof.html` or regenerate it with `python tools/build_judge_proof.py`.
 
@@ -265,7 +266,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 pytest
 ```
 
-310 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, derived fix-verification proof, and the judge-proof page generator.
+319 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, derived fix-verification proof with markdown output, and the judge-proof page generator.
 
 ## Orbit Notes
 

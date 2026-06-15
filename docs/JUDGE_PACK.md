@@ -85,6 +85,29 @@ reachgate fixcheck docs/proof/mr2-reachgate-receipts.json \
                    docs/proof/mr3-reachgate-receipts-rerun.json
 ```
 
+### Fix verification demo
+
+Real usage compares before/after receipts produced by **actual** ReachGate
+runs (the same finding, scanned before and after a code fix). To show the
+workflow without a live dependency, the repo includes a **synthetic demo
+fixture** (clearly labelled, not a live captured proof) under
+`tests/fixtures/fixcheck/`: a `REACHABLE` before receipt and an **exhaustive**
+`NOT_REACHABLE` after receipt for the same finding under the same policy.
+
+```bash
+reachgate fixcheck \
+  tests/fixtures/fixcheck/before-reachable.json \
+  tests/fixtures/fixcheck/after-not-reachable-exhaustive.json \
+  --format markdown
+```
+
+It reports `reachability_removed` — **only** because the after verdict is an
+exhaustive `NOT_REACHABLE` under the same policy version. An after `UNKNOWN`, a
+non-exhaustive `NOT_REACHABLE`, or a different policy version is reported as
+`incomparable`, never as fixed or safe. The `--format markdown` output is
+MR-comment ready (before/after verdicts, status, fingerprints, and the reason),
+and `--output PATH` writes it anywhere without touching any tracked artifact.
+
 Expected: `verify_proof.py` (or `reachgate verify`) prints `ReachGate proof
 verified` and exits `0`; the test suite passes.
 
