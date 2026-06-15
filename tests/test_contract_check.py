@@ -322,3 +322,78 @@ def test_real_captured_proof_files_all_pass():
     ):
         result = cc.check_file(str(root / "docs" / "proof" / name))
         assert result.overall == cc.PASS, f"{name} failed its own contract"
+
+
+# --- "try to fake green": synthetic contract-violation fixtures ------------
+
+_VIOLATION_DIR = ("tests", "fixtures", "contract_violations")
+_VIOLATIONS = {
+    "not-reachable-timeout-hit.json": "timeout_hit",
+    "not-reachable-api-errors.json": "api_errors",
+    "not-reachable-frontier-not-exhausted.json": "frontier",
+}
+
+
+def _violation_path(name):
+    root = cli._find_repo_root()
+    assert root is not None
+    return root.joinpath(*_VIOLATION_DIR, name)
+
+
+@pytest.mark.parametrize("name,token", list(_VIOLATIONS.items()))
+def test_violation_fixture_fails_contract(name, token):
+    result = cc.check_file(str(_violation_path(name)))
+    assert result.overall == cc.FAIL, f"{name} should FAIL contract-check"
+    # The diagnostic must name the exact violated precondition.
+    msgs = " ".join(
+        d.message.lower()
+        for f in result.findings
+        for d in f.diagnostics
+    )
+    expected = {
+        "timeout_hit": "timeout_hit",
+        "api_errors": "api_errors",
+        "frontier": "frontier not exhausted",
+    }[token]
+    assert expected in msgs
+
+
+def test_all_violation_fixtures_fail():
+    for name in _VIOLATIONS:
+        assert cc.check_file(str(_violation_path(name))).overall == cc.FAIL
+
+
+def test_violation_fixtures_are_labeled_synthetic():
+    for name in _VIOLATIONS:
+        data = json.loads(_violation_path(name).read_text(encoding="utf-8"))
+        assert "_fixture" in data
+        assert "SYNTHETIC" in data["_fixture"].upper()
+        assert "not live proof" in data["_fixture"].lower()
+
+
+def test_violation_fixtures_not_under_docs_proof():
+    """Fake-green fixtures must never live under docs/proof (would taint proof)."""
+    root = cli._find_repo_root()
+    proof_dir = root / "docs" / "proof"
+    for name in _VIOLATIONS:
+        assert not (proof_dir / name).exists()
+        # And they do live where they belong: under tests/fixtures.
+        assert _violation_path(name).exists()
+
+
+def test_cli_violation_fixture_exits_one(capsys):
+    rc = cli.main(["contract-check", str(_violation_path("not-reachable-timeout-hit.json"))])
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert "FAIL" in out
+    assert out.isascii()
+
+
+def test_cli_real_vs_fake_green_contrast(capsys):
+    """The demo's core claim: real captured receipt PASSES, fake-green FAILS."""
+    root = cli._find_repo_root()
+    real = str(root / "docs" / "proof" / "mr2-reachgate-receipts.json")
+    fake = str(_violation_path("not-reachable-api-errors.json"))
+    assert cli.main(["contract-check", real]) == 0
+    capsys.readouterr()
+    assert cli.main(["contract-check", fake]) == 1

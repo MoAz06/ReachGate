@@ -1,0 +1,26 @@
+{
+  "_fixture": "SYNTHETIC CONTRACT VIOLATION FIXTURE - not live proof. Tries to claim NOT_REACHABLE while the search frontier was never exhausted (frontier_exhausted=false). Must FAIL contract-check.",
+  "schema_version": "1.0",
+  "policy": {"version": "8eae9f21a3e6", "threshold": 50},
+  "findings": [
+    {
+      "verdict": "NOT_REACHABLE",
+      "verdict_basis": "no_path_search_exhaustive",
+      "path": [],
+      "occurrence_id": "fake-green-frontier",
+      "occurrence_name": "Overclaiming NOT_REACHABLE (frontier not exhausted)",
+      "severity": "high",
+      "fingerprint": "0000frontier000",
+      "certificate": {
+        "strategy": "bounded-bfs-v1",
+        "policy_version": "8eae9f21a3e6",
+        "bounds": {"max_hops": 6, "max_visited": 40, "max_seconds": 120},
+        "frontier_exhausted": false,
+        "max_hops_hit": false,
+        "visited_cap_hit": false,
+        "timeout_hit": false,
+        "api_errors": 0
+      }
+    }
+  ]
+}
