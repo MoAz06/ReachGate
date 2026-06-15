@@ -177,20 +177,34 @@ def cmd_verify(args) -> int:
     return int(module.main() or 0)
 
 
+def _tool_argv(args) -> list[str]:
+    """Build the argv passed to a delegated tool.
+
+    Maps the CLI's own ``--output`` to the tool's ``--output`` and forwards any
+    extra pass-through ``tool_args`` after it. The tools all accept ``--output``,
+    so a temp/explicit output path works without writing the tracked defaults.
+    """
+    argv: list[str] = []
+    if getattr(args, "output", None):
+        argv += ["--output", args.output]
+    argv += list(getattr(args, "tool_args", None) or [])
+    return argv
+
+
 def cmd_export_vex(args) -> int:
-    return _run_tool_main("export_vex", args.tool_args)
+    return _run_tool_main("export_vex", _tool_argv(args))
 
 
 def cmd_export_sarif(args) -> int:
-    return _run_tool_main("export_sarif", args.tool_args)
+    return _run_tool_main("export_sarif", _tool_argv(args))
 
 
 def cmd_manifest(args) -> int:
-    return _run_tool_main("build_evidence_manifest", args.tool_args)
+    return _run_tool_main("build_evidence_manifest", _tool_argv(args))
 
 
 def cmd_proof(args) -> int:
-    return _run_tool_main("build_judge_proof", args.tool_args)
+    return _run_tool_main("build_judge_proof", _tool_argv(args))
 
 
 def cmd_capsule(args) -> int:
@@ -381,26 +395,34 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_vex = sub.add_parser(
         "export-vex", help="Export OpenVEX from receipts (repo checkout).")
+    p_vex.add_argument("--output", default=None,
+                       help="Output path (default: docs/proof/reachgate.openvex.json).")
     p_vex.add_argument("tool_args", nargs=argparse.REMAINDER,
-                       help="Args passed through to tools/export_vex.py.")
+                       help="Extra args passed through to tools/export_vex.py.")
     p_vex.set_defaults(func=cmd_export_vex)
 
     p_sarif = sub.add_parser(
         "export-sarif", help="Export SARIF 2.1.0 from receipts (repo checkout).")
+    p_sarif.add_argument("--output", default=None,
+                         help="Output path (default: docs/proof/reachgate.sarif.json).")
     p_sarif.add_argument("tool_args", nargs=argparse.REMAINDER,
-                         help="Args passed through to tools/export_sarif.py.")
+                         help="Extra args passed through to tools/export_sarif.py.")
     p_sarif.set_defaults(func=cmd_export_sarif)
 
     p_man = sub.add_parser(
         "manifest", help="Build the sha256 evidence manifest (repo checkout).")
+    p_man.add_argument("--output", default=None,
+                       help="Output path (default: docs/proof/reachgate.evidence-manifest.json).")
     p_man.add_argument("tool_args", nargs=argparse.REMAINDER,
-                       help="Args passed through to tools/build_evidence_manifest.py.")
+                       help="Extra args passed through to tools/build_evidence_manifest.py.")
     p_man.set_defaults(func=cmd_manifest)
 
     p_proof = sub.add_parser(
         "proof", help="Build the offline judge-proof HTML page (repo checkout).")
+    p_proof.add_argument("--output", default=None,
+                         help="Output path (default: docs/judge-proof.html).")
     p_proof.add_argument("tool_args", nargs=argparse.REMAINDER,
-                         help="Args passed through to tools/build_judge_proof.py.")
+                         help="Extra args passed through to tools/build_judge_proof.py.")
     p_proof.set_defaults(func=cmd_proof)
 
     p_cap = sub.add_parser(

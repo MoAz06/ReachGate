@@ -131,6 +131,43 @@ def test_verify_in_repo_passes(capsys):
     assert "ReachGate proof verified" in out
 
 
+# --- delegating commands accept --output and never touch tracked paths -----
+
+def _tracked_proof_mtimes():
+    """Snapshot mtimes of the tracked artifacts the tools default to."""
+    root = cli._find_repo_root()
+    assert root is not None
+    paths = [
+        root / "docs" / "proof" / "reachgate.openvex.json",
+        root / "docs" / "proof" / "reachgate.sarif.json",
+        root / "docs" / "proof" / "reachgate.evidence-manifest.json",
+        root / "docs" / "judge-proof.html",
+    ]
+    return {p: (p.stat().st_mtime_ns if p.exists() else None) for p in paths}
+
+
+@pytest.mark.parametrize("command,outfile", [
+    ("export-vex", "out.openvex.json"),
+    ("export-sarif", "out.sarif.json"),
+    ("manifest", "out.manifest.json"),
+    ("proof", "out.judge-proof.html"),
+])
+def test_delegating_command_accepts_output(tmp_path, command, outfile):
+    out = tmp_path / outfile
+    before = _tracked_proof_mtimes()
+
+    rc = cli.main([command, "--output", str(out)])
+
+    assert rc == 0, f"{command} --output failed"
+    assert out.exists(), f"{command} did not write the requested --output path"
+    # Crucially, none of the tracked default artifacts were rewritten.
+    after = _tracked_proof_mtimes()
+    assert before == after, (
+        f"{command} --output mutated a tracked docs path: "
+        f"{[p.name for p in before if before[p] != after[p]]}"
+    )
+
+
 # --- no network: any socket use during offline commands is a failure -------
 
 def test_no_network_during_offline_commands(monkeypatch):
