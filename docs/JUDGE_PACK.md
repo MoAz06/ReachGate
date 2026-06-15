@@ -54,8 +54,24 @@ python tools/build_judge_proof.py
 pytest
 ```
 
-Expected: `verify_proof.py` prints `ReachGate proof verified` and exits `0`;
-the test suite passes.
+Or, with the installed CLI (`pip install -e ".[dev]"`), the same offline surface
+in one command set:
+
+```bash
+reachgate verify                 # verify receipts + cross-check OpenVEX/SARIF
+reachgate coverage               # verdict / UNKNOWN-reason / blind-spot report
+reachgate coverage --format html --output coverage.html   # same, as static HTML
+reachgate policy explain         # the recorded policy, with honest provenance
+reachgate judge                  # one command: verify -> exports -> manifest -> proof
+reachgate capsule build          # portable evidence capsule -> dist/reachgate-evidence-capsule.zip
+```
+
+`reachgate capsule build` produces a deterministic, gitignored zip with the
+receipts, OpenVEX, SARIF, evidence manifest, judge-proof HTML, this Judge Pack,
+and a `HOW_TO_VERIFY.txt` — a portable bundle a reviewer can verify offline.
+
+Expected: `verify_proof.py` (or `reachgate verify`) prints `ReachGate proof
+verified` and exits `0`; the test suite passes.
 
 ---
 

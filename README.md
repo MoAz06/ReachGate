@@ -111,15 +111,19 @@ For a guided walkthrough, see the [Judge Pack](docs/JUDGE_PACK.md). All claims a
 Once installed (`pip install -e ".[dev]"`), the offline, deterministic surface is one `reachgate` command:
 
 ```bash
-reachgate coverage        # verdict / UNKNOWN-reason / blind-spot report
-reachgate verify          # verify receipts + cross-check OpenVEX/SARIF
-reachgate export-vex      # OpenVEX from receipts
-reachgate export-sarif    # SARIF 2.1.0 from receipts
-reachgate manifest        # sha256 evidence manifest
-reachgate proof           # offline judge-proof HTML page
+reachgate coverage                 # verdict / UNKNOWN-reason / blind-spot report
+reachgate coverage --format html --output coverage.html  # same report as static HTML
+reachgate verify                   # verify receipts + cross-check OpenVEX/SARIF
+reachgate export-vex               # OpenVEX from receipts
+reachgate export-sarif             # SARIF 2.1.0 from receipts
+reachgate manifest                 # sha256 evidence manifest
+reachgate proof                    # offline judge-proof HTML page
+reachgate policy explain           # read-only view of the recorded policy
+reachgate judge                    # one command: verify -> exports -> manifest -> proof
+reachgate capsule build            # portable evidence capsule (zip) in dist/
 ```
 
-`reachgate coverage` is the blind-spot report: verdict counts, UNKNOWN reasons with their typed next actions (from `guidance.py`), which findings lack a code anchor, and an honest limitations section — all derived from the captured receipts, offline. `reachgate scan` is intentionally **not** offline: a real scan needs live Orbit and a token, so it is documented as a live workflow via `python -m reachgate.agent` and the CI job (see [GitLab CI setup](docs/GITLAB_CI_SETUP.md)). The CLI is package-safe: the export/verify commands read the repo's `tools/` and `docs/proof/`, and fail loudly with a helpful message when run outside a checkout. See [Integrations](docs/INTEGRATIONS.md) for the evidence-router story.
+`reachgate coverage` is the blind-spot report: verdict counts, UNKNOWN reasons with their typed next actions (from `guidance.py`), which findings lack a code anchor, and an honest limitations section — all derived from the captured receipts, offline (`--format json|html` and `--output` are supported). `reachgate judge` runs the whole offline pipeline end to end and prints the path to the judge-proof page (it never opens a browser). `reachgate capsule build` writes `dist/reachgate-evidence-capsule.zip`: a portable, offline-verifiable bundle (receipts, OpenVEX, SARIF, manifest, judge-proof HTML, Judge Pack, and a `HOW_TO_VERIFY.txt`) — deterministic and gitignored. `reachgate policy explain` prints the recorded policy version, threshold, rule weights, and search bounds straight from a receipt, with honest provenance. `export-vex`/`export-sarif`/`manifest`/`proof` accept `--output` to write anywhere; with no `--output` they write the tracked defaults under `docs/proof/`. `reachgate scan` is intentionally **not** offline: a real scan needs live Orbit and a token, so it is documented as a live workflow via `python -m reachgate.agent` and the CI job (see [GitLab CI setup](docs/GITLAB_CI_SETUP.md)). The CLI is package-safe: the export/verify commands read the repo's `tools/` and `docs/proof/`, and fail loudly with a helpful message when run outside a checkout. See [Integrations](docs/INTEGRATIONS.md) for the evidence-router story.
 
 ## CI/CD integration
 
@@ -247,7 +251,7 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 pytest
 ```
 
-262 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI, the coverage/blind-spot report, and the judge-proof page generator.
+282 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, and the judge-proof page generator.
 
 ## Orbit Notes
 

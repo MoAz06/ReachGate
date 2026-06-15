@@ -102,6 +102,24 @@ include:
     ref: main
 ```
 
+> **Important — the template needs ReachGate's tooling in the running repo.**
+> `include` only pulls the *YAML*; the job still runs `python tools/mr_triage.py`
+> in **your** project's checkout. A bare `include` does **not** magically make
+> `tools/mr_triage.py` appear. So you must make ReachGate available in the job,
+> one of:
+>
+> - **Vendor it:** copy ReachGate's `tools/` and `src/reachgate/` (plus
+>   `reachgate.yml`) into your repo, so `python tools/mr_triage.py` resolves.
+> - **Install it:** `pip install` ReachGate in `before_script` (e.g. from a Git
+>   URL or an internal package index) and adjust the `script:` to call the
+>   installed entry point instead of `python tools/mr_triage.py`.
+> - **Fork/submodule:** run the job from a checkout that already contains
+>   ReachGate's `tools/`.
+>
+> Options A and B above are self-contained because the job runs inside this
+> project's own repository, where `tools/` exists. Option C is the portable
+> form and carries this requirement.
+
 ## Bring your own findings
 
 By default the demo path uses two live GitLab docs-site findings. For a
