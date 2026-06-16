@@ -111,20 +111,18 @@ def _default_receipt_sources(root: Path) -> list[Path]:
 
 def cmd_coverage(args) -> int:
     from . import coverage as coverage_mod
+    from . import _resources
 
     if args.receipts:
         sources = [Path(p) for p in args.receipts]
     else:
-        root = _find_repo_root()
-        if root is None:
-            print(
-                "error: no --receipts given and no repo checkout found.\n"
-                "  Pass receipt files explicitly: "
-                "reachgate coverage --receipts <file.json> [...]",
-                file=sys.stderr,
-            )
-            return 2
-        sources = _default_receipt_sources(root)
+        # Default to the captured receipts: docs/proof in a checkout, the
+        # bundled package-data copy after a bare install. Works standalone.
+        proof = _resources.proof_dir()
+        sources = [
+            proof / "mr2-reachgate-receipts.json",
+            proof / "unknown-reachgate-receipt.json",
+        ]
 
     try:
         report = coverage_mod.build_coverage(sources)
@@ -149,32 +147,19 @@ def cmd_coverage(args) -> int:
     return 0
 
 
-# --- repo-delegating commands ----------------------------------------------
+# --- package-native offline commands (work standalone) ---------------------
 
-def _run_tool_main(module_name: str, argv: list[str]) -> int:
-    """Locate the repo, load the tool module, and run its main(argv)."""
-    try:
-        root = _require_repo()
-        module = _load_tool(root, module_name)
-    except _RepoUnavailable as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 2
-    main_fn = getattr(module, "main", None)
-    if main_fn is None:
-        print(f"error: {module_name} has no main() to run", file=sys.stderr)
-        return 1
-    return int(main_fn(argv) or 0)
+# These used to delegate to tools/*.py and require a repo checkout. The logic
+# now lives in the package (reachgate.export_vex, .export_sarif,
+# .build_evidence_manifest, .build_judge_proof, .verify_proof), so they run
+# after a bare `pip install`: their default sources resolve via
+# reachgate._resources (the bundled receipts when there is no checkout).
 
 
 def cmd_verify(args) -> int:
-    # verify_proof.main() takes no argv; call it via the located repo.
-    try:
-        root = _require_repo()
-        module = _load_tool(root, "verify_proof")
-    except _RepoUnavailable as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 2
-    return int(module.main() or 0)
+    # verify_proof.main() takes no argv; it resolves the proof dir itself.
+    from . import verify_proof
+    return int(verify_proof.main() or 0)
 
 
 def _tool_argv(args) -> list[str]:
@@ -192,28 +177,43 @@ def _tool_argv(args) -> list[str]:
 
 
 def cmd_export_vex(args) -> int:
-    return _run_tool_main("export_vex", _tool_argv(args))
+    from . import export_vex
+    return int(export_vex.main(_tool_argv(args)) or 0)
 
 
 def cmd_export_sarif(args) -> int:
-    return _run_tool_main("export_sarif", _tool_argv(args))
+    from . import export_sarif
+    return int(export_sarif.main(_tool_argv(args)) or 0)
 
 
 def cmd_manifest(args) -> int:
-    return _run_tool_main("build_evidence_manifest", _tool_argv(args))
+    from . import build_evidence_manifest
+    return int(build_evidence_manifest.main(_tool_argv(args)) or 0)
 
 
 def cmd_proof(args) -> int:
-    return _run_tool_main("build_judge_proof", _tool_argv(args))
+    from . import build_judge_proof
+    return int(build_judge_proof.main(_tool_argv(args)) or 0)
 
 
 def cmd_capsule(args) -> int:
+    command = args.capsule_command
+    if command == "build":
+        return _capsule_build(args)
+    if command == "keygen":
+        return _capsule_keygen(args)
+    if command == "sign":
+        return _capsule_sign(args)
+    if command == "verify":
+        return _capsule_verify(args)
+    print("error: unknown capsule command (build | keygen | sign | verify)",
+          file=sys.stderr)
+    return 2
+
+
+def _capsule_build(args) -> int:
     from . import capsule as capsule_mod
 
-    if args.capsule_command != "build":
-        print("error: unknown capsule command (try `reachgate capsule build`)",
-              file=sys.stderr)
-        return 2
     try:
         root = _require_repo()
     except _RepoUnavailable as exc:
@@ -238,6 +238,107 @@ def cmd_capsule(args) -> int:
     return 0
 
 
+def _capsule_keygen(args) -> int:
+    """Generate an Ed25519 keypair for signing capsules."""
+    from . import signing
+
+    out_dir = Path(args.out_dir) if args.out_dir else Path.cwd()
+    try:
+        private_pem, public_pem = signing.generate_keypair()
+    except signing.SigningError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    out_dir.mkdir(parents=True, exist_ok=True)
+    key_path = out_dir / "reachgate-signing.key"
+    pub_path = out_dir / "reachgate-signing.pub"
+    key_path.write_bytes(private_pem)
+    pub_path.write_bytes(public_pem)
+    print(f"wrote private key: {key_path}")
+    print(f"wrote public key:  {pub_path}")
+    print("KEEP THE PRIVATE KEY SECRET. Publish only the .pub so others can "
+          "verify your signed capsules.")
+    return 0
+
+
+def _default_capsule_path(args) -> Path | None:
+    """Resolve the capsule the sign/verify command operates on."""
+    if getattr(args, "target", None):
+        return Path(args.target)
+    from . import capsule as capsule_mod
+    root = _find_repo_root()
+    if root is not None:
+        return root / "dist" / capsule_mod.DEFAULT_CAPSULE_NAME
+    return None
+
+
+def _capsule_sign(args) -> int:
+    from . import signing
+
+    target = _default_capsule_path(args)
+    if target is None:
+        print("error: no capsule given. Pass the capsule path: "
+              "reachgate capsule sign <capsule.zip> --key <private.key>",
+              file=sys.stderr)
+        return 2
+    if not args.key:
+        print("error: --key <private.key> is required to sign", file=sys.stderr)
+        return 2
+    try:
+        private_pem = Path(args.key).read_bytes()
+    except FileNotFoundError:
+        print(f"error: private key not found: {args.key}", file=sys.stderr)
+        return 2
+    sig_path = Path(args.output) if args.output else target.with_name(target.name + ".sig")
+    try:
+        signing.sign_file(target, private_pem, sig_path)
+        # Emit the public key sidecar for the verifier's convenience. Trust
+        # still comes from the public key being published out-of-band, not from
+        # this copy; it is only there to make verification one command.
+        public_pem = signing.public_from_private(private_pem)
+        pub_path = target.with_name(target.name + ".pub")
+        pub_path.write_bytes(public_pem)
+    except signing.SigningError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(f"signed {target}")
+    print(f"  signature:  {sig_path}")
+    print(f"  public key: {pub_path}")
+    print("Verify with: reachgate capsule verify "
+          f"{target.name} --sig {sig_path.name} --pubkey {pub_path.name}")
+    return 0
+
+
+def _capsule_verify(args) -> int:
+    from . import signing
+
+    target = _default_capsule_path(args)
+    if target is None:
+        print("error: no capsule given. Pass the capsule path: "
+              "reachgate capsule verify <capsule.zip> --pubkey <key.pub>",
+              file=sys.stderr)
+        return 2
+    sig_path = Path(args.sig) if args.sig else target.with_name(target.name + ".sig")
+    pub_arg = args.pubkey or str(target.with_name(target.name + ".pub"))
+    try:
+        public_pem = Path(pub_arg).read_bytes()
+    except FileNotFoundError:
+        print(f"error: public key not found: {pub_arg}", file=sys.stderr)
+        return 2
+    try:
+        ok = signing.verify_file(target, public_pem, sig_path)
+    except signing.SigningError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    if ok:
+        print(f"OK: signature valid for {target}")
+        print("The capsule is authentic and unmodified (Ed25519, byte-exact).")
+        return 0
+    print(f"FAIL: signature does NOT match {target}", file=sys.stderr)
+    print("The capsule was modified, or signed with a different key.",
+          file=sys.stderr)
+    return 1
+
+
 def cmd_judge(args) -> int:
     """One-command judge demo: verify -> exports -> manifest -> proof page.
 
@@ -250,20 +351,22 @@ def cmd_judge(args) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    from . import (
+        verify_proof,
+        export_vex,
+        export_sarif,
+        build_evidence_manifest,
+        build_judge_proof,
+    )
     steps = [
-        ("Verifying receipts + cross-checking OpenVEX/SARIF", "verify_proof", None),
-        ("Exporting OpenVEX (CVE/SCA)", "export_vex", []),
-        ("Exporting SARIF 2.1.0 (SAST/code-flow)", "export_sarif", []),
-        ("Building sha256 evidence manifest", "build_evidence_manifest", []),
-        ("Building offline judge-proof HTML", "build_judge_proof", []),
+        ("Verifying receipts + cross-checking OpenVEX/SARIF", verify_proof, None),
+        ("Exporting OpenVEX (CVE/SCA)", export_vex, []),
+        ("Exporting SARIF 2.1.0 (SAST/code-flow)", export_sarif, []),
+        ("Building sha256 evidence manifest", build_evidence_manifest, []),
+        ("Building offline judge-proof HTML", build_judge_proof, []),
     ]
-    for i, (label, module_name, argv) in enumerate(steps, 1):
+    for i, (label, module, argv) in enumerate(steps, 1):
         print(f"{i}. {label}...")
-        try:
-            module = _load_tool(root, module_name)
-        except _RepoUnavailable as exc:
-            print(f"   error: {exc}", file=sys.stderr)
-            return 2
         rc = int(module.main() or 0) if argv is None else int(module.main(argv) or 0)
         if rc != 0:
             print(f"   step failed (exit {rc})", file=sys.stderr)
@@ -422,6 +525,29 @@ def cmd_contract_check(args) -> int:
     return 1 if overall_fail else 0
 
 
+def cmd_explorer(args) -> int:
+    """Generate a self-contained, offline evidence explorer HTML page."""
+    from . import explorer
+    return int(explorer.main(["--output", args.output] if args.output else []) or 0)
+
+
+def cmd_blame(args) -> int:
+    """Report which changed files lie on a finding's reachable path (overlap)."""
+    from . import blame as blame_mod
+
+    argv: list[str] = [args.receipt]
+    if args.changed_files is not None:
+        argv += ["--changed-files", *args.changed_files]
+    if args.base is not None:
+        argv += ["--base", args.base, "--head", args.head]
+    if args.repo:
+        argv += ["--repo", args.repo]
+    argv += ["--format", args.format]
+    if args.output:
+        argv += ["--output", args.output]
+    return int(blame_mod.main(argv) or 0)
+
+
 def cmd_scan(args) -> int:
     print(
         "error: `reachgate scan` is intentionally not available in the offline "
@@ -504,13 +630,32 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_cap = sub.add_parser(
         "capsule",
-        help="Build a portable, offline-verifiable evidence capsule (zip).")
-    p_cap.add_argument("capsule_command", choices=("build",), metavar="build",
-                       help="Capsule sub-command (currently: build).")
+        help="Build / sign / verify a portable, offline-verifiable evidence "
+             "capsule (zip).")
+    p_cap.add_argument(
+        "capsule_command", choices=("build", "keygen", "sign", "verify"),
+        metavar="{build,keygen,sign,verify}",
+        help="build a capsule, generate a signing keypair, sign a capsule, or "
+             "verify a signed capsule.")
+    p_cap.add_argument("target", nargs="?", default=None,
+                       help="Capsule path for sign/verify "
+                            "(default: dist/reachgate-evidence-capsule.zip).")
     p_cap.add_argument("--output", default=None,
-                       help="Output zip path (default: dist/reachgate-evidence-capsule.zip).")
+                       help="build: output zip path; sign: signature output path.")
     p_cap.add_argument("--no-regenerate", action="store_true",
-                       help="Bundle artifacts as-is instead of rebuilding them from receipts.")
+                       help="build: bundle artifacts as-is instead of rebuilding "
+                            "them from receipts.")
+    p_cap.add_argument("--out-dir", default=None,
+                       help="keygen: directory to write the keypair into "
+                            "(default: current directory).")
+    p_cap.add_argument("--key", default=None,
+                       help="sign: path to the Ed25519 private key (PEM).")
+    p_cap.add_argument("--pubkey", default=None,
+                       help="verify: path to the Ed25519 public key (PEM); "
+                            "defaults to <capsule>.pub.")
+    p_cap.add_argument("--sig", default=None,
+                       help="verify: path to the detached signature; "
+                            "defaults to <capsule>.sig.")
     p_cap.set_defaults(func=cmd_capsule)
 
     p_judge = sub.add_parser(
@@ -559,6 +704,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write to a file instead of stdout (writes no tracked artifact by default).",
     )
     p_cc.set_defaults(func=cmd_contract_check)
+
+    p_expl = sub.add_parser(
+        "explorer",
+        help="Generate a self-contained, offline evidence explorer (HTML).")
+    p_expl.add_argument("--output", default=None,
+                        help="output HTML path (default: reachgate-explorer.html).")
+    p_expl.set_defaults(func=cmd_explorer)
+
+    p_blame = sub.add_parser(
+        "blame",
+        help="Which changed files lie on a finding's reachable path "
+             "(deterministic overlap; never a causation claim).",
+    )
+    p_blame.add_argument("receipt", help="path to a ReachGate receipt JSON")
+    p_blame.add_argument(
+        "--changed-files", nargs="*", default=None,
+        help="explicit list of changed files (from the receipt's repository).")
+    p_blame.add_argument(
+        "--base", default=None,
+        help="git base ref; with --head, changed files = git diff base..head.")
+    p_blame.add_argument(
+        "--head", default="HEAD",
+        help="git head ref (default: HEAD); used with --base.")
+    p_blame.add_argument(
+        "--repo", default=None,
+        help="run git in this directory (default: current directory).")
+    p_blame.add_argument(
+        "--format", choices=("text", "json", "markdown"), default="text",
+        help="output format (default: text).")
+    p_blame.add_argument(
+        "--output", default=None, help="write to a file instead of stdout.")
+    p_blame.set_defaults(func=cmd_blame)
 
     p_scan = sub.add_parser(
         "scan", help="(live-only) Walk Orbit for findings. Not in the offline CLI.")
