@@ -1,8 +1,8 @@
 # ReachGate Demo Video Script
 
-Doel: een demo-video van maximaal 3 minuten voor GitLab Transcend Showcase Track.
+Goal: a demo video of at most 3 minutes for the GitLab Transcend Showcase Track.
 
-Harde jury-focus:
+Hard jury focus:
 
 - Technological Implementation: live Orbit use, deterministic engine, certificates, tests, CI artifact.
 - Design and Usability: useful MR comments, no duplicate spam on rerun, reviewers stay in GitLab.
@@ -33,18 +33,18 @@ Notes for this flow:
 - **The MR !3 idempotency demo is still useful** (reviewers get durable evidence without duplicate comment spam) but it is **no longer the main act** — show it only if time remains, after the evidence story above.
 - `blame` (if shown) reports only which changed files **overlap** a reachable path — never a causation or "this change introduced the path" claim. `fixcheck` (if shown) *verifies a fix from before/after receipts*; it does not modify code.
 
-## Harde Review Van Het Oude Script
+## Hard Review Of The Old Script
 
-Het oude script was technisch sterk, maar niet maximaal jurygericht.
+The old script was technically strong, but not maximally jury-focused.
 
-- Te zwak in de eerste 20 seconden: de hook legde het probleem uit, maar niet scherp genoeg waarom dit een unique Orbit use case is.
-- Potential Impact kwam te laat en te impliciet. De jury moet meteen horen dat dit scanner-noise en MR-triage oplost.
-- Design and Usability zat verstopt in de idempotency-rerun. Maak dat expliciet: reviewers krijgen bewijs in de MR zonder comment-spam.
-- De certificate-uitleg was te lang. Toon het certificaat, noem alleen wat het bewijst.
-- De proof gallery was goed, maar mag geen losse rondleiding worden. Gebruik het als afsluitend verificatiebewijs.
-- Agentic mode is sterk, maar zonder schone video-proof kan het de demo rommelig maken. Voor deze 3 minuten wint MR/CI-proof.
+- Too weak in the first 20 seconds: the hook explained the problem, but not sharply enough why this is a unique Orbit use case.
+- Potential Impact came too late and too implicitly. The jury must hear immediately that this solves scanner noise and MR triage.
+- Design and Usability was hidden in the idempotency rerun. Make it explicit: reviewers get evidence in the MR without comment spam.
+- The certificate explanation was too long. Show the certificate, state only what it proves.
+- The proof gallery was good, but must not become a loose walkthrough. Use it as closing verification evidence.
+- Agentic mode is strong, but without clean video proof it can make the demo messy. For these 3 minutes, MR/CI proof wins.
 
-## Beste Opening Sentence
+## Best Opening Sentence
 
 Most security tools stop at "this vulnerability exists"; ReachGate answers the question reviewers actually need in a merge request: can this vulnerable code be reached from the application's entry points?
 
@@ -142,6 +142,6 @@ Cut first if too long:
 - Best machine-readable proof: `docs/proof/mr3-reachgate-receipts-rerun.json`.
 - When recording GitLab, zoom into the receipt, certificate, log lines and artifacts. Do not linger on the "docs-only" MR title; it is proof infrastructure, not the product message.
 
-## Beste Closing Sentence
+## Best Closing Sentence
 
 ReachGate shows what GitLab Orbit can prove: deterministic reachability evidence in the merge request, honest unknowns when the graph is incomplete, and no LLM verdicts.
