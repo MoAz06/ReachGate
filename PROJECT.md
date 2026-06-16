@@ -60,7 +60,7 @@ Andere hackathon-inzendingen (RiskSentry, CodeSheriff, DevGuard) gebruiken een L
 
 ## 3. Directorystructuur
 
-> Interne snapshot; de test-lijst hieronder en in §9 is illustratief, niet exhaustief. Bron van waarheid voor het aantal/de inhoud is `pytest` (407 tests per 16 juni 2026; +5 gemarkeerde `standalone` install-gate, default gedeselecteerd).
+> Interne snapshot; de test-lijst hieronder en in §9 is illustratief, niet exhaustief. Bron van waarheid voor het aantal/de inhoud is `pytest` (422 tests per 16 juni 2026; +5 gemarkeerde `standalone` install-gate, default gedeselecteerd).
 
 ```
 reachgate/
@@ -82,6 +82,7 @@ reachgate/
 │   ├── signing.py          # Ed25519 tamper-evidence voor de capsule (optional [sign])
 │   ├── blame.py            # Regression blame: changed files ∩ reachable path (overlap, geen causatie)
 │   ├── explorer.py         # Self-contained offline evidence explorer (HTML)
+│   ├── selftest.py         # Adversarial self-proof: invariant-regressietest (PASS+FAIL legs)
 │   ├── guidance.py         # Tekstuele toelichting/uitleg-helpers
 │   ├── _resources.py       # Resolvet proof-data: docs/proof in checkout, bundled na bare install
 │   ├── export_vex.py       # OpenVEX-export (canoniek; tools/ = shim)
@@ -114,7 +115,7 @@ reachgate/
 │   ├── fonts/              # Self-hosted OFL fonts (Courier Prime, Spectral)
 │   └── proof/              # Captured artifacts incl. OpenVEX, SARIF en evidence manifest
 │
-├── tests/                  # 407 tests (pytest + respx fixtures)
+├── tests/                  # 422 tests (pytest + respx fixtures)
 │   ├── fixtures/           # Vastgelegde live Orbit-responses (JSON)
 │   ├── test_artifact.py
 │   ├── test_certificate.py
@@ -491,7 +492,7 @@ De gepubliceerde agent in de GitLab AI Catalog (`AI > Agents > ReachGate`) heeft
 
 ## 9. Testdekking
 
-**407 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit, verdict→action routing, doctor en MR-triage error handling, OpenVEX-export incl. de never-fake-green guard, de SARIF 2.1.0-export (codeFlow, getypte UNKNOWN, byte-stabiele output), de evidence manifest, de package-safe `reachgate` CLI (incl. `--output`-afhandeling), het coverage/blind-spot report (text/json/html), de deterministische evidence capsule, de Ed25519 capsule-signing met tamper-detectie, de regression-blame path-overlap (geen causatie-claim), de offline evidence explorer, derived fix-verification proof met markdown-output, de machine-checkable Evidence Contract validator, de fake-green rejection demo fixtures, en de judge-proof generator). Plus 5 gemarkeerde `standalone`-tests die een echte bare `pip install` in een schone venv buiten de checkout verifiëren (default gedeselecteerd; draai met `pytest -m standalone`). Draaien met:
+**422 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit, verdict→action routing, doctor en MR-triage error handling, OpenVEX-export incl. de never-fake-green guard, de SARIF 2.1.0-export (codeFlow, getypte UNKNOWN, byte-stabiele output), de evidence manifest, de package-safe `reachgate` CLI (incl. `--output`-afhandeling), het coverage/blind-spot report (text/json/html), de deterministische evidence capsule, de Ed25519 capsule-signing met tamper-detectie, de regression-blame path-overlap (geen causatie-claim), de offline evidence explorer, de adversariële self-proof (`reachgate selftest`: invariant-regressietest die non-zero geeft als een FAIL-leg onverwacht slaagt), derived fix-verification proof met markdown-output, de machine-checkable Evidence Contract validator, de fake-green rejection demo fixtures, de CI gate-templates (contract-check + standalone), en de judge-proof generator). Plus 5 gemarkeerde `standalone`-tests die een echte bare `pip install` in een schone venv buiten de checkout verifiëren (default gedeselecteerd; draai met `pytest -m standalone`). Draaien met:
 ```bash
 pytest
 ```
