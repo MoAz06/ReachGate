@@ -7,7 +7,9 @@ after installing the package:
 pip install -e ".[dev]"
 ```
 
-Everything below is **offline**: no GitLab token, no Orbit, no network.
+Everything below is **offline**: no GitLab token, no Orbit, no network. The full
+test suite is **422 tests** (plus 5 `standalone` install-gate tests that are
+deselected by default; opt in with `pytest -m standalone`).
 
 ## The two-minute walkthrough
 
@@ -15,26 +17,43 @@ Everything below is **offline**: no GitLab token, no Orbit, no network.
 # 1. See the offline evidence CLI
 reachgate --help
 
-# 2. Verify the captured receipts + cross-check OpenVEX/SARIF (exits 0)
+# 2. THE KEYSTONE -- the rules prove themselves (exits 0). An adversarial
+#    invariant test: real evidence is accepted, fake-green is rejected, a
+#    tampered signature breaks, and UNKNOWN stays an evidence gap. If a safety
+#    rule ever regressed, it exits non-zero. (A self-check, not a certification.)
+reachgate selftest
+
+# 3. Verify the captured receipts + cross-check OpenVEX/SARIF (exits 0)
 reachgate verify
 
-# 3. Enforce the Evidence Contract on a REAL captured receipt -> PASS (exits 0)
+# 4. Enforce the Evidence Contract on a REAL captured receipt -> PASS (exits 0)
 reachgate contract-check docs/proof/mr2-reachgate-receipts.json
 
-# 4. Try to fake green: a synthetic receipt that claims NOT_REACHABLE while its
+# 5. Try to fake green: a synthetic receipt that claims NOT_REACHABLE while its
 #    search timed out -> FAIL (exits 1). The contract rejects the overclaim.
 reachgate contract-check tests/fixtures/contract_violations/not-reachable-timeout-hit.json
 
-# 5. Verify a fix from before/after receipts -> reachability_removed
+# 6. Verify a fix from before/after receipts -> reachability_removed
+#    (verifies a fix; ReachGate does not modify your code)
 reachgate fixcheck \
   tests/fixtures/fixcheck/before-reachable.json \
   tests/fixtures/fixcheck/after-not-reachable-exhaustive.json \
   --format markdown
 
-# 6. Coverage / blind-spot report (verdicts, UNKNOWN reasons, limitations)
+# 7. Regression blame: which CHANGED files overlap a finding's reachable path.
+#    Deterministic overlap only -- never a causation / "introduced it" claim.
+reachgate blame docs/proof/mr2-reachgate-receipts.json \
+  --changed-files content/frontend/404/archives_redirect.js
+
+# 8. Coverage / blind-spot report (verdicts, UNKNOWN reasons, limitations)
 reachgate coverage
 
-# 7. Build a portable, offline-verifiable evidence capsule (zip in dist/)
+# 9. Self-contained offline evidence explorer (one HTML page, no server)
+reachgate explorer --output explorer.html
+
+# 10. Build a portable, offline-verifiable evidence capsule (zip in dist/).
+#     Run this LAST: it may refresh the manifest's repo_commit_sha and leave
+#     the working tree dirty during recording.
 reachgate capsule build
 ```
 
@@ -48,6 +67,7 @@ This is the differentiator: ReachGate does not ask you to trust its output. The
 
 | Command | Result | Exit code |
 |---|---|---|
+| `reachgate selftest` | every invariant held (must-pass passed, must-fail rejected) | `0` |
 | `reachgate verify` | proof verified | `0` |
 | `reachgate contract-check docs/proof/mr2-reachgate-receipts.json` | **PASS** | `0` |
 | `reachgate contract-check tests/fixtures/contract_violations/not-reachable-timeout-hit.json` | **FAIL** | `1` |
