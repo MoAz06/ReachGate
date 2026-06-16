@@ -571,13 +571,13 @@ ReachGate is only as good as its `reachgate.yml`. An incomplete declaration of e
 - [x] **Phase 2 MR idempotency proven live** (11 June) - MR !3: run 1 `created`, rerun `unchanged`, comment count 2 -> 2, artifact re-uploaded, issue count 6 -> 6.
 - [x] **Phase 2 proof assets saved** - screenshots in `docs/img/mr3-*.png`, artifact snapshot in `docs/proof/mr3-reachgate-receipts-rerun.json`.
 - [x] **Agentic E2E working** (11 June) - Orbit MCP in VS Code + skill + agent, see section 10.
-- [x] **Feature branch synced** - `origin/ambitious/fix-verification` and `gitlab/ambitious/fix-verification` point at the same submission-ready work. Before final submission, either merge this branch into `main` or make the submitted branch explicit.
-- [ ] **Record demo video** (<= 3 minutes) - current `SCRIPT.md`: lead with the problem, show the SAST flip (REACHABLE path + exhaustive NOT_REACHABLE within bounds), show `reachgate selftest` / fake-green rejection, mention UNKNOWN honesty, then close with offline verification. MR !3 idempotency remains useful if time remains, but is no longer the main act.
-- [ ] **Finish Devpost submission** - text from `docs/DEVPOST.md`, fill in the real video URL, then submit at https://gitlab-transcend.devpost.com/.
+- [x] **Final submission branch merged and pushed** (16 June) - `main`, `origin/main`, and `gitlab/main` contain the final ReachGate submission branch; the GitLab pipeline passed after refreshing the CI token.
+- [x] **Demo video recorded** (<= 3 minutes) - current `SCRIPT.md` leads with the problem, shows the SAST flip (REACHABLE path + exhaustive NOT_REACHABLE within bounds), shows `reachgate selftest` / fake-green rejection, mentions UNKNOWN honesty, then closes with offline verification. Video: https://www.youtube.com/watch?v=3pqW5-V_8sg
+- [x] **Devpost copy prepared** - text from `docs/DEVPOST.md` includes the real video URL and is ready to paste/submit at https://gitlab-transcend.devpost.com/.
 
 ### Private pre-submit cleanup
 
-- [ ] **Clean up the AI Catalog outside the repo** - remove the `reachgate-test` and `schema-probe` throwaway agents if they are still visible. This does not touch product code or proof assets.
+- **AI Catalog cleanup outside the repo** - if `reachgate-test` or `schema-probe` throwaway agents are still visible, remove them manually. This does not touch product code or proof assets.
 
 ### Backlog after submission
 

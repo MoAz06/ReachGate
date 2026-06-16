@@ -90,7 +90,7 @@ Screenshots live in `docs/img/mr2-*.png` and `docs/img/mr3-*.png`; artifact snap
 - MR !3 receipt artifact snapshot: `docs/proof/mr3-reachgate-receipts-rerun.json`
 - CI-created work item with Mermaid receipt: https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/work_items/5
 - Documented agentic-run work item (show the run log or recording when claiming provenance): https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/work_items/3
-- Demo video: <YOUTUBE_URL_HERE>
+- Demo video: https://www.youtube.com/watch?v=3pqW5-V_8sg
 
 ## Built with
 
