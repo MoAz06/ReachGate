@@ -1,0 +1,159 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ReachGate",
+          "informationUri": "https://gitlab.com/gitlab-ai-hackathon/transcend/39037247",
+          "rules": [
+            {
+              "id": "reachgate.reachable",
+              "name": "Reachable",
+              "shortDescription": {
+                "text": "Vulnerable code is reachable from a declared entry point."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "reachgate.not_reachable",
+              "name": "NotReachableWithinBounds",
+              "shortDescription": {
+                "text": "No path within configured search bounds (not a global safety claim)."
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
+              "id": "reachgate.unknown",
+              "name": "TypedEvidenceGap",
+              "shortDescription": {
+                "text": "Insufficient evidence: a typed evidence gap with a next action, never presented as safe."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            }
+          ],
+          "version": "policy-8eae9f21a3e6"
+        }
+      },
+      "results": [
+        {
+          "ruleId": "reachgate.reachable",
+          "level": "error",
+          "message": {
+            "text": "REACHABLE: Server-side request forgery (SSRF). A graph path exists from a declared entry point to the vulnerable definition (File:content/frontend/404/archives_redirect.js -> Definition:getArchivesVersions). Basis path_found; fingerprint 8c2aeb6e2457adc7."
+          },
+          "partialFingerprints": {
+            "reachgateFingerprint": "8c2aeb6e2457adc7"
+          },
+          "properties": {
+            "verdict": "REACHABLE",
+            "verdict_basis": "path_found",
+            "fingerprint": "8c2aeb6e2457adc7",
+            "policy_version": "8eae9f21a3e6",
+            "risk_score": 85,
+            "severity": "high"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "content/frontend/services/fetch_versions.js"
+                }
+              }
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "message": {
+                          "text": "File:content/frontend/404/archives_redirect.js"
+                        },
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "content/frontend/404/archives_redirect.js"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "location": {
+                        "message": {
+                          "text": "Definition:getArchivesVersions"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "reachgate.not_reachable",
+          "level": "note",
+          "message": {
+            "text": "NOT_REACHABLE: Improper limitation of a pathname ('Path Traversal') is not reachable within configured search bounds (frontier exhausted, no bound hit, 0 API errors). This is not a global safety claim. Basis no_path_search_exhaustive; fingerprint d457ba33eef89e2e."
+          },
+          "partialFingerprints": {
+            "reachgateFingerprint": "d457ba33eef89e2e"
+          },
+          "properties": {
+            "verdict": "NOT_REACHABLE",
+            "verdict_basis": "no_path_search_exhaustive",
+            "fingerprint": "d457ba33eef89e2e",
+            "policy_version": "8eae9f21a3e6",
+            "risk_score": 8,
+            "severity": "medium"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/create_issues.js"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "reachgate.unknown",
+          "level": "warning",
+          "message": {
+            "text": "UNKNOWN / no_definitions_indexed: Dependency advisory finding (no code to walk). Orbit indexed the file but no callable definition to walk to. Next action: Check Orbit indexing / language coverage for this file, or supply a code-level finding. Dependency/SCA findings with no reachable code definition stay UNKNOWN by design rather than fake-green. This is a typed evidence gap, not a safety claim. Basis insufficient_evidence:no_definitions_indexed; fingerprint f215d5e5e0d416e3."
+          },
+          "partialFingerprints": {
+            "reachgateFingerprint": "f215d5e5e0d416e3"
+          },
+          "properties": {
+            "verdict": "UNKNOWN",
+            "verdict_basis": "insufficient_evidence:no_definitions_indexed",
+            "fingerprint": "f215d5e5e0d416e3",
+            "policy_version": "8eae9f21a3e6",
+            "risk_score": 15,
+            "severity": "high"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "gem/puma/CVE-2026-47736.yml"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
