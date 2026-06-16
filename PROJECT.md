@@ -1,104 +1,122 @@
-# ReachGate - Projectdocumentatie
+# ReachGate - Project documentation
 
-> Interne referentie: status, architectuur, wat werkt, wat nog gedaan moet worden.
-> Bijgewerkt: 11 juni 2026.
+> Internal reference: status, architecture, what works, what still needs to be done.
+> Updated: 11 June 2026.
 
 ---
 
-## Inhoudsopgave
+## Table of contents
 
-1. [Wat is ReachGate](#1-wat-is-reachgate)
+1. [What is ReachGate](#1-what-is-reachgate)
 2. [Hackathon context](#2-hackathon-context)
-3. [Directorystructuur](#3-directorystructuur)
-4. [Architectuur en dataflow](#4-architectuur-en-dataflow)
-5. [Module-voor-module: wat er staat](#5-module-voor-module-wat-er-staat)
-6. [Orbit API - live-geverifieerde feiten](#6-orbit-api---live-geverifieerde-feiten)
-7. [Demo data en de flip](#7-demo-data-en-de-flip)
-8. [Agent in de AI Catalog](#8-agent-in-de-ai-catalog)
-9. [Testdekking](#9-testdekking)
-10. [Bekende beperkingen en beslissingen](#10-bekende-beperkingen-en-beslissingen)
-11. [Laatste submission-status](#11-laatste-submission-status)
-12. [Omgevingsvariabelen en draaien](#12-omgevingsvariabelen-en-draaien)
+3. [Directory structure](#3-directory-structure)
+4. [Architecture and dataflow](#4-architecture-and-dataflow)
+5. [Module by module: what is in place](#5-module-by-module-what-is-in-place)
+6. [Orbit API - live-verified facts](#6-orbit-api---live-verified-facts)
+7. [Demo data and the flip](#7-demo-data-and-the-flip)
+8. [Agent in the AI Catalog](#8-agent-in-the-ai-catalog)
+9. [Test coverage](#9-test-coverage)
+10. [Known limitations and decisions](#10-known-limitations-and-decisions)
+11. [Latest submission status](#11-latest-submission-status)
+12. [Environment variables and running](#12-environment-variables-and-running)
 
 ---
 
-## 1. Wat is ReachGate
+## 1. What is ReachGate
 
-Beveiligingsscanners vertellen je dat een kwetsbaarheid *bestaat*. ReachGate beantwoordt of die kwetsbaarheid *uitmaakt*: is er een aantoonbaar pad in de code van een gedeclareerd entry-point naar de kwetsbare definitie?
+Security scanners tell you that a vulnerability *exists*. ReachGate answers whether that vulnerability *matters*: is there a demonstrable path in the code from a declared entry point to the vulnerable definition?
 
-**De kerngedachte:**
-- Je declareert je attack surface in `reachgate.yml` (de files die van buiten bereikbaar zijn, bijv. routes, controllers).
-- ReachGate loopt via GitLab Orbit's Knowledge Graph (DEFINES / IMPORTS / CALLS edges) van die entry points naar de kwetsbare code.
-- Een deterministisch policy-engine (vaste regelgewichten, geen black-box model-score) geeft een `REACHABLE` of `NOT_REACHABLE` verdict.
-- Bij `REACHABLE`: een work item aanmaken + MR-comment met een volledig auditeerbaar receipt (pad + regeluitsplitsing).
-- Bij `NOT_REACHABLE`: deprioriteren met bewijs (geen pad van geen enkel entry point).
+**The core idea:**
+- You declare your attack surface in `reachgate.yml` (the files reachable from the outside, e.g. routes, controllers).
+- ReachGate walks GitLab Orbit's Knowledge Graph (DEFINES / IMPORTS / CALLS edges) from those entry points to the vulnerable code.
+- A deterministic policy engine (fixed rule weights, no black-box model score) returns a `REACHABLE` or `NOT_REACHABLE` verdict.
+- On `REACHABLE`: create a work item + MR comment with a fully auditable receipt (path + rule breakdown).
+- On `NOT_REACHABLE`: deprioritize with evidence (no path from any entry point).
 
-**Differentiatie ten opzichte van concurrenten:**
-Andere hackathon-inzendingen (RiskSentry, CodeSheriff, DevGuard) gebruiken een LLM als rechter. ReachGate beslist deterministisch op basis van een graph-feit; het model schrijft alleen de toelichting. Dit is exact de aanpak die de hackathon-briefing aanwijst als de juiste tegenhanger voor de "AI-powered scanner" menigte.
+**Differentiation versus competitors:**
+Other hackathon submissions (RiskSentry, CodeSheriff, DevGuard) use an LLM as the judge. ReachGate decides deterministically based on a graph fact; the model only writes the explanation. This is exactly the approach the hackathon briefing points to as the right counterpart to the "AI-powered scanner" crowd.
 
 ---
 
 ## 2. Hackathon context
 
-| Gegeven | Waarde |
+| Item | Value |
 |---|---|
 | Hackathon | GitLab Transcend Hackathon (Showcase Track) |
-| Deadline | **24 juni 2026, 14:00 ET** |
-| Doelprijs | Technological Implementation - 1e plaats ($2.000) |
-| Vereisten | MIT-licentie, gepubliceerd in AI Catalog, demo-video <= 3 min |
-| Max cashprijzen | 1 per project (dus single-categorie focus) |
+| Deadline | **24 June 2026, 14:00 ET** |
+| Target prize | Technological Implementation - 1st place ($2,000) |
+| Requirements | MIT license, published in AI Catalog, demo video <= 3 min |
+| Max cash prizes | 1 per project (so single-category focus) |
 | Devpost | https://gitlab-transcend.devpost.com/ |
-| Registratie | https://contributors.gitlab.com/transcend-hackathon |
+| Registration | https://contributors.gitlab.com/transcend-hackathon |
 
 **Provisioned GitLab project:**
 - Namespace: `gitlab-ai-hackathon/transcend/39037247`
 - Project ID: `83119911`
-- Rol: Developer + AI
-- GitHub repo: https://github.com/MoAz06/ReachGate (MIT, lokaal: dit pad)
+- Role: Developer + AI
+- GitHub repo: https://github.com/MoAz06/ReachGate (MIT, local: this path)
 
 ---
 
-## 3. Directorystructuur
+## 3. Directory structure
 
-> Interne snapshot; de test-lijst hieronder en in §9 is illustratief, niet exhaustief. Bron van waarheid voor het aantal/de inhoud is `pytest` (282 tests per 14 juni 2026).
+> Internal snapshot; the test list below and in §9 is illustrative, not exhaustive. The source of truth for the count/contents is `pytest` (422 tests as of 16 June 2026; +5 marked `standalone` install-gate, deselected by default).
 
 ```
 reachgate/
-├── src/reachgate/          # De canonieke Python-engine
+├── src/reachgate/          # The canonical Python engine
 │   ├── __init__.py
-│   ├── agent.py            # Orchestratie entry point
+│   ├── agent.py            # Orchestration entry point
 │   ├── orbit_client.py     # Orbit REST API client
-│   ├── graph_walker.py     # BFS over de code-graph
-│   ├── path_strategy.py    # BoundedBFS algoritme
-│   ├── policy_engine.py    # Deterministische regelengine + receipt
-│   ├── actions.py          # GitLab work items, idempotente MR-comments, receipt-rendering
+│   ├── graph_walker.py     # BFS over the code graph
+│   ├── path_strategy.py    # BoundedBFS algorithm
+│   ├── policy_engine.py    # Deterministic rule engine + receipt
+│   ├── actions.py          # GitLab work items, idempotent MR comments, receipt rendering
 │   ├── findings.py         # GitLab SAST/native JSON findings loader
-│   └── config.py           # reachgate.yml loader + glob matcher
+│   ├── config.py           # reachgate.yml loader + glob matcher
+│   ├── certificate.py      # Reachability certificate + stable fingerprint
+│   ├── coverage.py         # Verdict/UNKNOWN-reason/blind-spot report (text/json/html)
+│   ├── fixproof.py         # Fix verification over two receipts (reachability_removed/introduced)
+│   ├── contract_check.py   # Machine-checkable Evidence Contract validator
+│   ├── capsule.py          # Portable, offline-verifiable evidence capsule (zip)
+│   ├── signing.py          # Ed25519 tamper-evidence for the capsule (optional [sign])
+│   ├── blame.py            # Regression blame: changed files ∩ reachable path (overlap, no causation)
+│   ├── explorer.py         # Self-contained offline evidence explorer (HTML)
+│   ├── selftest.py         # Adversarial self-proof: invariant regression test (PASS+FAIL legs)
+│   ├── guidance.py         # Textual guidance/explanation helpers
+│   ├── _resources.py       # Resolves proof data: docs/proof in checkout, bundled after bare install
+│   ├── export_vex.py       # OpenVEX export (canonical; tools/ = shim)
+│   ├── export_sarif.py     # SARIF 2.1.0 export (canonical; tools/ = shim)
+│   ├── build_evidence_manifest.py # sha256 manifest (canonical; tools/ = shim)
+│   ├── build_judge_proof.py # judge-proof HTML generator (canonical; tools/ = shim)
+│   ├── verify_proof.py     # Offline verifier (canonical; tools/ = shim)
+│   ├── cli.py              # Package-safe `reachgate` CLI entry point
+│   └── _data/proof/        # Bundled read-only proof receipts (standalone after pip install)
 │
 ├── agent/
-│   └── system_prompt.md    # Systeem-prompt voor de gepubliceerde AI Catalog-agent
+│   └── system_prompt.md    # System prompt for the published AI Catalog agent
 │
-├── skills/reachgate/       # Agent-skill definitie (/reachgate slash command)
+├── skills/reachgate/       # Agent skill definition (/reachgate slash command)
 │
 ├── tools/
-│   ├── demo_e2e.py          # End-to-end demo tegen live Orbit (de "flip")
-│   ├── verify_proof.py      # Offline replay van captured proof + OpenVEX/SARIF-kruischeck
-│   ├── export_vex.py        # OpenVEX-export uit receipts (standards-aligned)
-│   ├── export_sarif.py      # SARIF 2.1.0-export uit receipts (code-flow evidence)
-│   ├── build_evidence_manifest.py # sha256-manifest voor proof-artifacts
-│   ├── build_judge_proof.py # Genereert docs/judge-proof.html uit docs/proof/*.json
-│   ├── diff_receipts.py     # Receipt-diff (regressie: --fail-on-new-reachable)
-│   ├── reachgate_doctor.py  # Pre-flight: entrypoint-globs vs live Orbit
-│   ├── hunt_demo_target.py  # Helper om demo-targets te vinden
-│   └── smoke_client.py      # Snelle smoke-test van de Orbit-verbinding
+│   ├── demo_e2e.py          # End-to-end demo against live Orbit (the "flip")
+│   ├── verify_proof.py      # Shim -> reachgate.verify_proof (compat: python tools/...)
+│   ├── export_vex.py        # Shim -> reachgate.export_vex
+│   ├── export_sarif.py      # Shim -> reachgate.export_sarif
+│   ├── build_evidence_manifest.py # Shim -> reachgate.build_evidence_manifest
+│   ├── build_judge_proof.py # Shim -> reachgate.build_judge_proof
+│   ├── diff_receipts.py     # Receipt diff (regression: --fail-on-new-reachable)
+│   ├── reachgate_doctor.py  # Pre-flight: entrypoint globs vs live Orbit
+│   ├── hunt_demo_target.py  # Helper to find demo targets
+│   └── smoke_client.py      # Quick smoke test of the Orbit connection
 │
 ├── docs/
-│   ├── judge-proof.html    # Offline bewijs-pagina (gegenereerd)
+│   ├── judge-proof.html    # Offline proof page (generated)
 │   ├── fonts/              # Self-hosted OFL fonts (Courier Prime, Spectral)
-│   └── proof/              # Captured artifacts incl. OpenVEX, SARIF en evidence manifest
+│   └── proof/              # Captured artifacts incl. OpenVEX, SARIF and evidence manifest
 │
-├── tests/                  # 282 tests (pytest + respx fixtures)
-│   ├── fixtures/           # Vastgelegde live Orbit-responses (JSON)
+├── tests/                  # 422 tests (pytest + respx fixtures)
+│   ├── fixtures/           # Captured live Orbit responses (JSON)
 │   ├── test_artifact.py
 │   ├── test_certificate.py
 │   ├── test_config.py
@@ -112,22 +130,22 @@ reachgate/
 │   ├── test_unknown_verdict.py
 │   └── test_actions_idempotency.py
 │
-├── examples/demo-app/      # Voorbeeldapp met eigen reachgate.yml
-├── reachgate.yml           # Standaard entry-point configuratie
+├── examples/demo-app/      # Example app with its own reachgate.yml
+├── reachgate.yml           # Default entry-point configuration
 ├── pyproject.toml
 ├── README.md
-└── PROJECT.md              # Dit bestand
+└── PROJECT.md              # This file
 ```
 
 ---
 
-## 4. Architectuur en dataflow
+## 4. Architecture and dataflow
 
 ```
 reachgate.yml
     |
     v
-agent.py  (orchestratie)
+agent.py  (orchestration)
     |
     +-- orbit_client.py
     |       POST /api/v4/orbit/query   (traversal / neighbors)
@@ -135,41 +153,41 @@ agent.py  (orchestratie)
     |       GET  /api/v4/orbit/status
     |
     +-- graph_walker.py
-    |       - Parseert VulnerabilityOccurrence.location (JSON)
-    |       - Haalt Definitions op voor het kwetsbare bestand
-    |       - Matcht entry-point-patronen tegen File-nodes in Orbit
-    |       - Dedupliceert op pad (zelfde bestand in meerdere forks)
-    |       - Delegeert aan BoundedBFS voor het eigenlijke pad
+    |       - Parses VulnerabilityOccurrence.location (JSON)
+    |       - Fetches Definitions for the vulnerable file
+    |       - Matches entry-point patterns against File nodes in Orbit
+    |       - Deduplicates by path (same file across multiple forks)
+    |       - Delegates to BoundedBFS for the actual path
     |
     +-- path_strategy.py (BoundedBFS)
     |       - BFS over DEFINES / IMPORTS / CALLS edges
-    |       - Gedeelde neighbor-cache over findings (Finding B hergebruikt A's cache)
-    |       - Begrensd door max_visited, max_seconds, max_hops
+    |       - Shared neighbor cache across findings (Finding B reuses A's cache)
+    |       - Bounded by max_visited, max_seconds, max_hops
     |
     +-- policy_engine.py
-    |       - Evalueert 4 vaste regels met gewichten
-    |       - risk_score = som van getriggerde gewichten
-    |       - Verdict = REACHABLE / NOT_REACHABLE / UNKNOWN op basis van score en bewijsbasis
-    |       - Retourneert PolicyReceipt (auditeerbaar, serialiseerbaar)
+    |       - Evaluates 4 fixed rules with weights
+    |       - risk_score = sum of triggered weights
+    |       - Verdict = REACHABLE / NOT_REACHABLE / UNKNOWN based on score and evidence basis
+    |       - Returns PolicyReceipt (auditable, serializable)
     |
     +-- findings.py
-    |       - Laadt GitLab SAST reports of native JSON naar occurrence-dicts
-    |       - Genereert stabiele uuid fallback voor findings zonder id
-    |       - Dropt findings met ontbrekende location niet stil; engine geeft UNKNOWN
+    |       - Loads GitLab SAST reports or native JSON into occurrence dicts
+    |       - Generates a stable uuid fallback for findings without an id
+    |       - Does not silently drop findings with a missing location; the engine returns UNKNOWN
     |
     +-- actions.py
-            - Agent/action-flow: REACHABLE -> GitLab issue + optioneel MR-comment
-            - MR-CI-flow: fingerprint-idempotente comment-upsert, geen work items
-            - NOT_REACHABLE/UNKNOWN -> alleen MR-comment (geen escalatie)
-            - render_receipt() -> Markdown met verdict, pad, regeluitsplitsing
+            - Agent/action flow: REACHABLE -> GitLab issue + optional MR comment
+            - MR-CI flow: fingerprint-idempotent comment upsert, no work items
+            - NOT_REACHABLE/UNKNOWN -> MR comment only (no escalation)
+            - render_receipt() -> Markdown with verdict, path, rule breakdown
 ```
 
-**Datastroom per finding:**
+**Data flow per finding:**
 ```
 VulnerabilityOccurrence (Orbit)
-    -> location JSON -> bestandspad
-    -> Definitions in dat bestand (target_ids)
-    -> Entry-point Files (van reachgate.yml)
+    -> location JSON -> file path
+    -> Definitions in that file (target_ids)
+    -> Entry-point Files (from reachgate.yml)
     -> BoundedBFS: File -> [DEFINES/IMPORTS/CALLS] -> ... -> Definition
     -> ReachabilityResult {reachable, path, hops, entry_point, ...}
     -> PolicyReceipt {verdict, risk_score, triggered_rules, ...}
@@ -178,116 +196,116 @@ VulnerabilityOccurrence (Orbit)
 
 ---
 
-## 5. Module-voor-module: wat er staat
+## 5. Module by module: what is in place
 
 ### `orbit_client.py` - Orbit REST API client
 
-**Status: volledig werkend, live-getest op 10 juni 2026.**
+**Status: fully working, live-tested on 10 June 2026.**
 
-De client wrappet de enige query-endpoint van Orbit. Elke query-body wordt gewrapped in `{"query": <inner>, "format": "raw"}`.
+The client wraps Orbit's single query endpoint. Each query body is wrapped in `{"query": <inner>, "format": "raw"}`.
 
-**Publieke methoden:**
+**Public methods:**
 
-| Methode | Wat het doet |
+| Method | What it does |
 |---|---|
-| `query(inner)` | Ruwe query, retourneert hele response dict |
-| `query_nodes(inner)` | Shortcut: retourneert alleen nodes-lijst |
-| `query_result(inner)` | Shortcut: retourneert `(nodes, edges)` tuple |
-| `get_vulnerability_occurrences(severity, limit)` | Haalt VulnerabilityOccurrence-nodes op, optioneel gefilterd op severity |
-| `get_definitions_for_file(file_path)` | Alle Definition-nodes voor een bestandspad |
-| `get_file_by_path(file_path)` | Zoek een File-node op exact pad |
-| `get_files_matching(patterns)` | Bestanden die matchen op `contains`-patronen |
-| `get_code_neighbors(entity, node_id)` | Buren van een node via DEFINES/IMPORTS/CALLS edges |
-| `get_graph_schema(expand)` | Schema-endpoint |
-| `get_status()` | Status-endpoint |
+| `query(inner)` | Raw query, returns the whole response dict |
+| `query_nodes(inner)` | Shortcut: returns only the nodes list |
+| `query_result(inner)` | Shortcut: returns a `(nodes, edges)` tuple |
+| `get_vulnerability_occurrences(severity, limit)` | Fetches VulnerabilityOccurrence nodes, optionally filtered by severity |
+| `get_definitions_for_file(file_path)` | All Definition nodes for a file path |
+| `get_file_by_path(file_path)` | Look up a File node by exact path |
+| `get_files_matching(patterns)` | Files matching `contains` patterns |
+| `get_code_neighbors(entity, node_id)` | Neighbors of a node via DEFINES/IMPORTS/CALLS edges |
+| `get_graph_schema(expand)` | Schema endpoint |
+| `get_status()` | Status endpoint |
 
-**Vaste constanten:**
-- `CODE_EDGES = {"DEFINES", "IMPORTS", "CALLS"}` - alleen deze edges zijn relevant voor reachability
+**Fixed constants:**
+- `CODE_EDGES = {"DEFINES", "IMPORTS", "CALLS"}` - only these edges are relevant for reachability
 
 ---
 
 ### `path_strategy.py` - BoundedBFS
 
-**Status: werkend, live-getest.**
+**Status: working, live-tested.**
 
-`BoundedBFS` implementeert de `PathStrategy` protocol. Er is geen native pathfinding query in Orbit; dit is gebouwd over de `neighbors` query.
+`BoundedBFS` implements the `PathStrategy` protocol. There is no native pathfinding query in Orbit; this is built on top of the `neighbors` query.
 
-**Sleuteleigenschappen:**
-- Shared neighbor cache over instantie: Finding B hergebruikt alles wat Finding A al heeft opgehaald.
-- Begrensd door: `max_hops` (standaard 10), `max_visited` (optioneel), `max_seconds` (optioneel).
-- Zoekt naar een *set* target-IDs (alle definities in het kwetsbare bestand) - stopt bij de eerste hit.
-- Retourneert een `list[PathNode]` of `None`.
+**Key properties:**
+- Shared neighbor cache across the instance: Finding B reuses everything Finding A already fetched.
+- Bounded by: `max_hops` (default 10), `max_visited` (optional), `max_seconds` (optional).
+- Searches for a *set* of target IDs (all definitions in the vulnerable file) - stops at the first hit.
+- Returns a `list[PathNode]` or `None`.
 
-`PathNode` is een frozen dataclass: `entity`, `node_id`, `label`.
+`PathNode` is a frozen dataclass: `entity`, `node_id`, `label`.
 
 ---
 
 ### `graph_walker.py` - GraphWalker
 
-**Status: werkend, live-getest.**
+**Status: working, live-tested.**
 
-`GraphWalker.check_reachability(occurrence)` is de enige publieke methode. Het:
-1. Parseert `occurrence["location"]` (JSON string) naar een bestandspad.
-2. Haalt alle Definitions op voor dat bestand (target IDs).
-3. Haalt entry-point Files op via `get_files_matching(config.entrypoint_patterns)`.
-4. Dedupliceert Files op pad (het globale Orbit-graph bevat hetzelfde bestand in tientallen forks).
-5. Filtert op `config.is_entrypoint(path)` (glob match).
-6. Roept `BoundedBFS.find_path(entry_file, target_ids, max_hops)` aan voor elk entry point.
-7. Retourneert de eerste `ReachabilityResult` met een pad, of `ReachabilityResult(reachable=False)`.
+`GraphWalker.check_reachability(occurrence)` is the only public method. It:
+1. Parses `occurrence["location"]` (JSON string) into a file path.
+2. Fetches all Definitions for that file (target IDs).
+3. Fetches entry-point Files via `get_files_matching(config.entrypoint_patterns)`.
+4. Deduplicates Files by path (the global Orbit graph contains the same file across dozens of forks).
+5. Filters on `config.is_entrypoint(path)` (glob match).
+6. Calls `BoundedBFS.find_path(entry_file, target_ids, max_hops)` for each entry point.
+7. Returns the first `ReachabilityResult` with a path, or `ReachabilityResult(reachable=False)`.
 
-`ReachabilityResult` bevat: `reachable`, `path`, `hops`, `entry_point`, `vulnerable_file`, `vulnerable_definition`.
+`ReachabilityResult` contains: `reachable`, `path`, `hops`, `entry_point`, `vulnerable_file`, `vulnerable_definition`.
 
 ---
 
-### `policy_engine.py` - Deterministische regelengine
+### `policy_engine.py` - Deterministic rule engine
 
-**Status: werkend, 100% deterministisch.**
+**Status: working, 100% deterministic.**
 
-**Regels en gewichten:**
+**Rules and weights:**
 
-| Regel | Gewicht | Conditie |
+| Rule | Weight | Condition |
 |---|---|---|
-| `path_exists` | +50 | Er bestaat een graph-pad van een entry point naar de kwetsbare definitie |
-| `direct_import` | +20 | Pad is 2 hops of korter (directe of bijna-directe import) |
-| `high_severity` | +15 | Severity is `critical` of `high` |
+| `path_exists` | +50 | A graph path exists from an entry point to the vulnerable definition |
+| `direct_import` | +20 | Path is 2 hops or shorter (a direct or near-direct import) |
+| `high_severity` | +15 | Severity is `critical` or `high` |
 | `medium_severity` | +8 | Severity is `medium` |
 
-**Drempel:** `REACHABLE_THRESHOLD = 50`
+**Threshold:** `REACHABLE_THRESHOLD = 50`
 - Score >= 50 → `REACHABLE`
 - Score < 50 + exhaustive search → `NOT_REACHABLE`
-- Onvoldoende bewijs → `UNKNOWN` (no location, no definitions, no entry points, bounds hit, API error)
+- Insufficient evidence → `UNKNOWN` (no location, no definitions, no entry points, bounds hit, API error)
 
-**Logica:** De `path_exists`-regel alleen al haalt de drempel. Dat is bewust: een aantoonbaar pad is de primaire voorwaarde. Zonder pad kan geen enkele andere combinatie de drempel halen.
+**Logic:** The `path_exists` rule alone reaches the threshold. That is intentional: a demonstrable path is the primary condition. Without a path, no other combination can reach the threshold.
 
-`PolicyReceipt` bevat: `verdict`, `risk_score`, `triggered_rules`, `path`, `hops`, `entry_point`, `vulnerable_file`, `vulnerable_definition`, `occurrence_id`, `occurrence_name`, `severity`, `verdict_basis`, `fingerprint` en `certificate`. Heeft een `.as_dict()` methode voor JSON-serialisatie.
+`PolicyReceipt` contains: `verdict`, `risk_score`, `triggered_rules`, `path`, `hops`, `entry_point`, `vulnerable_file`, `vulnerable_definition`, `occurrence_id`, `occurrence_name`, `severity`, `verdict_basis`, `fingerprint` and `certificate`. It has an `.as_dict()` method for JSON serialization.
 
 ---
 
-### `findings.py` - Findings input normalisatie
+### `findings.py` - Findings input normalization
 
-**Status: werkend, unit-getest.** Gebouwd voor Fase 2 zodat ReachGate niet alleen hardcoded demo-findings kan verwerken.
+**Status: working, unit-tested.** Built for Phase 2 so that ReachGate can process more than just hardcoded demo findings.
 
-`load_findings(path)` en `parse_findings(data)` ondersteunen:
+`load_findings(path)` and `parse_findings(data)` support:
 - GitLab SAST report JSON: `{ "vulnerabilities": [...] }`
-- Native ReachGate JSON: top-level lijst of `{ "findings": [...] }`
+- Native ReachGate JSON: a top-level list or `{ "findings": [...] }`
 
-Normalisatie-output is dezelfde occurrence-shape die `GraphWalker.check_reachability()` verwacht: `uuid`, `name`, `severity`, `location` als JSON-string en optioneel `start_line`. Als input geen bruikbare `uuid`, `id` of `fingerprint` heeft, genereert `derive_occurrence_id(name, file, start_line)` een stabiele hash. Twee findings in hetzelfde bestand collapsen daardoor niet naar dezelfde identiteit.
+The normalization output is the same occurrence shape that `GraphWalker.check_reachability()` expects: `uuid`, `name`, `severity`, `location` as a JSON string and optionally `start_line`. If the input has no usable `uuid`, `id` or `fingerprint`, `derive_occurrence_id(name, file, start_line)` generates a stable hash. As a result, two findings in the same file do not collapse into the same identity.
 
-Ontbrekende `location` wordt niet stil gedropt: de finding gaat door naar de engine en wordt daar eerlijk `UNKNOWN/no_location`.
+A missing `location` is not silently dropped: the finding proceeds to the engine and is honestly returned there as `UNKNOWN/no_location`.
 
 ---
 
-### `actions.py` - GitLab acties + receipt rendering
+### `actions.py` - GitLab actions + receipt rendering
 
-**Status: werkend, live-getest.** Work items #2-#5 zijn echt aangemaakt (handmatig script, agent-run en vroege CI-demo); MR !1 heeft beide receipts als comments. Fase 2 bewees op MR !3 dat MR-comments fingerprint-idempotent zijn: run 1 `created`, rerun `unchanged`, comment-count 2 -> 2, artifact opnieuw geupload, issue-count 6 -> 6.
+**Status: working, live-tested.** Work items #2-#5 were really created (manual script, agent run and early CI demo); MR !1 has both receipts as comments. Phase 2 proved on MR !3 that MR comments are fingerprint-idempotent: run 1 `created`, rerun `unchanged`, comment count 2 -> 2, artifact re-uploaded, issue count 6 -> 6.
 
-`GitLabActions.handle(receipt, mr_iid)` dispatcht op verdict:
-- `REACHABLE` → `_escalate()`: maakt een GitLab issue aan met labels `reachgate::reachable` en `severity::<severity>`, optioneel een MR-comment.
-- `NOT_REACHABLE` → `_deprioritize()`: alleen optioneel MR-comment, geen issue.
+`GitLabActions.handle(receipt, mr_iid)` dispatches on verdict:
+- `REACHABLE` → `_escalate()`: creates a GitLab issue with labels `reachgate::reachable` and `severity::<severity>`, optionally an MR comment.
+- `NOT_REACHABLE` → `_deprioritize()`: only an optional MR comment, no issue.
 
-Voor MR-CI gebruikt `tools/mr_triage.py` bewust niet `handle()`, maar `upsert_mr_receipt()`: comment-only, keyed op `occurrence_key` + receipt fingerprint. Reruns posten geen duplicate comments en maken geen work items.
+For MR-CI, `tools/mr_triage.py` deliberately does not use `handle()`, but `upsert_mr_receipt()`: comment-only, keyed on `occurrence_key` + receipt fingerprint. Reruns post no duplicate comments and create no work items.
 
-`render_receipt(receipt)` genereert de Markdown-output:
+`render_receipt(receipt)` generates the Markdown output:
 ```
 ## ReachGate Triage Receipt
 
@@ -311,18 +329,18 @@ File:content/frontend/404/archives_redirect.js -> Definition:getArchivesVersions
 
 ---
 
-### `config.py` - Configuratie
+### `config.py` - Configuration
 
-**Status: werkend.**
+**Status: working.**
 
-`load_config(path)` leest `reachgate.yml` en retourneert een `ReachGateConfig` met:
+`load_config(path)` reads `reachgate.yml` and returns a `ReachGateConfig` with:
 - `version: str`
-- `entrypoint_patterns: list[str]` - glob-patronen voor entry-point bestanden
-- `policy: PolicyConfig` - `min_hops` (standaard 1), `max_hops` (standaard 10)
+- `entrypoint_patterns: list[str]` - glob patterns for entry-point files
+- `policy: PolicyConfig` - `min_hops` (default 1), `max_hops` (default 10)
 
-`ReachGateConfig.is_entrypoint(file_path)` matcht een pad tegen alle patronen via een eigen glob-engine met `**`-ondersteuning.
+`ReachGateConfig.is_entrypoint(file_path)` matches a path against all patterns via a custom glob engine with `**` support.
 
-**Standaard `reachgate.yml`:**
+**Default `reachgate.yml`:**
 ```yaml
 version: "1"
 entrypoints:
@@ -339,44 +357,44 @@ policy:
 
 ---
 
-### `agent.py` - Orchestratie entry point
+### `agent.py` - Orchestration entry point
 
-**Status: werkend als Python-script; runtime-beperking van het Duo Agent Platform (zie sectie 10).**
+**Status: working as a Python script; runtime limitation of the Duo Agent Platform (see section 10).**
 
-`agent.run(gitlab_url, token, project_id, mr_iid, config_path, severity_filter)` is de volledige pipeline in één functie:
-1. Laadt configuratie
-2. Haalt occurrences op (standaard: critical + high + medium)
-3. Voor elke occurrence: walker → evaluate → handle
-4. Retourneert een lijst met resultaten `[{occurrence, verdict, risk_score, action}, ...]`
+`agent.run(gitlab_url, token, project_id, mr_iid, config_path, severity_filter)` is the full pipeline in one function:
+1. Loads configuration
+2. Fetches occurrences (default: critical + high + medium)
+3. For each occurrence: walker → evaluate → handle
+4. Returns a list of results `[{occurrence, verdict, risk_score, action}, ...]`
 
-Dit is de **escalation/action-flow** (`handle()`): bij `REACHABLE` kan een work item worden aangemaakt, en als `mr_iid`/`GITLAB_MR_IID`/`CI_MERGE_REQUEST_IID` aanwezig is, wordt een **gewone** MR-comment geplaatst (niet de fingerprint-idempotente upsert). Voor merge-request pipelines is `tools/mr_triage.py` de juiste flow: comment-only en idempotent via `upsert_mr_receipt`. Gebruik `agent.run()` dus niet als MR-CI-flow.
+This is the **escalation/action flow** (`handle()`): on `REACHABLE` a work item can be created, and if `mr_iid`/`GITLAB_MR_IID`/`CI_MERGE_REQUEST_IID` is present, a **plain** MR comment is posted (not the fingerprint-idempotent upsert). For merge-request pipelines, `tools/mr_triage.py` is the right flow: comment-only and idempotent via `upsert_mr_receipt`. So do not use `agent.run()` as the MR-CI flow.
 
-Kan ook als script (na `pip install -e ".[dev]"`): `python -m reachgate.agent`
+Can also run as a script (after `pip install -e ".[dev]"`): `python -m reachgate.agent`
 
 ---
 
-## 6. Orbit API - live-geverifieerde feiten
+## 6. Orbit API - live-verified facts
 
 **Endpoint:** `POST https://gitlab.com/api/v4/orbit/query`
-**Auth:** `Bearer <PAT met api-scope>`
+**Auth:** `Bearer <PAT with api scope>`
 **Body:** `{"query": <inner>, "format": "raw"}`
 **Response:** `{"result": {"nodes": [...], "edges": []}, "row_count": N}`
 
-**Bevestigde query-types (4 totaal):**
+**Confirmed query types (4 total):**
 - `traversal` (single node): `{"query_type":"traversal","node":{...,"filters":{...}},"limit":N}`
 - `traversal` (multi node): `{"query_type":"traversal","nodes":[...],"relationships":[...],"limit":N}`
 - `neighbors`: `{"query_type":"neighbors","node":{...},"neighbors":{"node":"<alias>"}}`
-- `aggregation` (niet gebruikt in engine)
-- `pathfinding` bestaat NIET - vervangen door BoundedBFS over neighbors
+- `aggregation` (not used in the engine)
+- `pathfinding` does NOT exist - replaced by BoundedBFS over neighbors
 
-**Filterregels:**
-- Minimaal 1 filter op minimaal 1 node is VEREIST (geen full table scans)
-- `contains`-filter vereist minimaal 3 tekens
-- Beschikbare operators: `eq`, `contains`, `starts_with`, `in`, `is_not_null`
+**Filter rules:**
+- At least 1 filter on at least 1 node is REQUIRED (no full table scans)
+- A `contains` filter requires at least 3 characters
+- Available operators: `eq`, `contains`, `starts_with`, `in`, `is_not_null`
 
-**Node-IDs:** komen terug als STRING, ook als het eigenlijk integers zijn.
+**Node IDs:** come back as STRING, even when they are really integers.
 
-**Bevestigde edges (live):**
+**Confirmed edges (live):**
 - `File -DEFINES-> Definition`
 - `File -IMPORTS-> ImportedSymbol`
 - `File -ON_BRANCH-> Branch`
@@ -386,20 +404,20 @@ Kan ook als script (na `pip install -e ".[dev]"`): `python -m reachgate.agent`
 {"file": "path/to/file.js", "start_line": 42}
 ```
 
-**Schema-endpoint:** `GET /api/v4/orbit/schema?expand=<NodeType>`
-**Status-endpoint:** `GET /api/v4/orbit/status`
+**Schema endpoint:** `GET /api/v4/orbit/schema?expand=<NodeType>`
+**Status endpoint:** `GET /api/v4/orbit/status`
 
-**Indexering:** Het live graph indexeert `gitlab-community/*` projecten inclusief deelnemerprojecten. Ons provisioned project `gitlab-ai-hackathon/transcend/...` staat NIET in de index. Demo draait daarom op de GitLab docs-site (zie sectie 7).
+**Indexing:** The live graph indexes `gitlab-community/*` projects including participant projects. Our provisioned project `gitlab-ai-hackathon/transcend/...` is NOT in the index. The demo therefore runs on the GitLab docs site (see section 7).
 
 ---
 
-## 7. Demo data en de flip
+## 7. Demo data and the flip
 
-**Bewezen live op 11 juni 2026** via `tools/demo_e2e.py`.
+**Proven live on 11 June 2026** via `tools/demo_e2e.py`.
 
-**Demo-project:** GitLab docs-site (geïndexeerd in Orbit, echte SAST findings, echte broncode).
+**Demo project:** GitLab docs site (indexed in Orbit, real SAST findings, real source code).
 
-### Finding A - REACHABLE (verwacht en bevestigd)
+### Finding A - REACHABLE (expected and confirmed)
 
 ```python
 REACHABLE_FINDING = {
@@ -410,14 +428,14 @@ REACHABLE_FINDING = {
 }
 ```
 
-**Resultaat:**
+**Result:**
 - Verdict: REACHABLE
 - Score: 85
-- Pad: `File:content/frontend/404/archives_redirect.js -> Definition:getArchivesVersions`
+- Path: `File:content/frontend/404/archives_redirect.js -> Definition:getArchivesVersions`
 - Hops: 1
-- Tijd: 7,2 seconden / 4 API-calls
+- Time: 7.2 seconds / 4 API calls
 
-### Finding B - NOT_REACHABLE (verwacht en bevestigd)
+### Finding B - NOT_REACHABLE (expected and confirmed)
 
 ```python
 UNREACHABLE_FINDING = {
@@ -428,87 +446,87 @@ UNREACHABLE_FINDING = {
 }
 ```
 
-**Resultaat:**
+**Result:**
 - Verdict: NOT_REACHABLE
 - Score: 8
-- Pad: geen
-- Tijd: 41,7 seconden / 24 API-calls
-- Reden: `scripts/` staat niet in de entry-point-patronen; BFS bereikt de definities niet
+- Path: none
+- Time: 41.7 seconds / 24 API calls
+- Reason: `scripts/` is not in the entry-point patterns; BFS does not reach the definitions
 
-**Totaal end-to-end:** 50,4 seconden / 29 API-calls
+**Total end-to-end:** 50.4 seconds / 29 API calls
 
-**Demo draaien:**
+**Running the demo:**
 ```powershell
 $env:GITLAB_TOKEN = "glpat-xxxxx"
 python tools/demo_e2e.py
 ```
 
-**Demo-parameters (in demo_e2e.py):**
-- `MAX_ENTRYPOINTS = 2` - cap op entry points om het snel te houden
-- `MAX_VISITED = 40` - BFS-knopen cap
-- `MAX_SECONDS_PER_WALK = 120` - tijdslimiet per finding (per walk; ~30s/walk gemeten, 2x marge)
-- `MAX_HOPS = 6` - beide demo-walks putten hun frontier uit rond hop 5, dus geen-pad = exhaustive NOT_REACHABLE (niet UNKNOWN)
+**Demo parameters (in demo_e2e.py):**
+- `MAX_ENTRYPOINTS = 2` - cap on entry points to keep it fast
+- `MAX_VISITED = 40` - BFS node cap
+- `MAX_SECONDS_PER_WALK = 120` - time limit per finding (per walk; ~30s/walk measured, 2x margin)
+- `MAX_HOPS = 6` - both demo walks exhaust their frontier around hop 5, so no-path = exhaustive NOT_REACHABLE (not UNKNOWN)
 
 ---
 
-## 8. Agent in de AI Catalog
+## 8. Agent in the AI Catalog
 
-**Status: gepubliceerd (Stage-1 artifact). Runtime-beperking van toepassing (zie sectie 10).**
+**Status: published (Stage-1 artifact). Runtime limitation applies (see section 10).**
 
-De gepubliceerde agent in de GitLab AI Catalog (`AI > Agents > ReachGate`) heeft:
-- Een systeem-prompt in `agent/system_prompt.md` die exact de workflow van de Python-engine beschrijft
+The published agent in the GitLab AI Catalog (`AI > Agents > ReachGate`) has:
+- A system prompt in `agent/system_prompt.md` that describes exactly the workflow of the Python engine
 - Tools: Orbit: Query Graph, Orbit: Get Graph Schema
 - Visibility: Public
 
-**De systeem-prompt dwingt het zelfde deterministische protocol af:**
-1. Parseer location JSON
-2. Zoek Definitions voor het kwetsbare bestand
-3. Zoek entry-point Files
-4. BFS over DEFINES/IMPORTS/CALLS naar de definitions
-5. Pas de vaste regelset toe (pad_exists +50, direct_import +20, high_severity +15, medium_severity +8, drempel 50)
-6. Neem actie op basis van verdict
+**The system prompt enforces the same deterministic protocol:**
+1. Parse location JSON
+2. Find Definitions for the vulnerable file
+3. Find entry-point Files
+4. BFS over DEFINES/IMPORTS/CALLS to the definitions
+5. Apply the fixed rule set (path_exists +50, direct_import +20, high_severity +15, medium_severity +8, threshold 50)
+6. Take action based on the verdict
 
-**Belangrijk voor de inzending:** De agent-publicatie voldoet aan het "gepubliceerd in AI Catalog"-vereiste. De echte reachability-berekeningen worden gedaan door de Python-engine (live bewezen). De inzending moet eerlijk zijn over dit onderscheid.
+**Important for the submission:** The agent publication satisfies the "published in AI Catalog" requirement. The real reachability computations are done by the Python engine (proven live). The submission must be honest about this distinction.
 
 ---
 
-## 9. Testdekking
+## 9. Test coverage
 
-**282 tests, allemaal groen** (incl. GitLab SAST/native findings input, fingerprint-idempotente MR-comment upsert, ImportedSymbol-fallback, import-resolutie, Mermaid-receipt rendering, UNKNOWN-verdict, certificate en fingerprint-stabiliteit, verdict→action routing, doctor en MR-triage error handling, OpenVEX-export incl. de never-fake-green guard, de SARIF 2.1.0-export (codeFlow, getypte UNKNOWN, byte-stabiele output), de evidence manifest, de package-safe `reachgate` CLI (incl. `--output`-afhandeling), het coverage/blind-spot report (text/json/html), de deterministische evidence capsule, en de judge-proof generator). Draaien met:
+**422 tests, all green** (incl. GitLab SAST/native findings input, fingerprint-idempotent MR comment upsert, ImportedSymbol fallback, import resolution, Mermaid receipt rendering, UNKNOWN verdict, certificate and fingerprint stability, verdict→action routing, doctor and MR-triage error handling, OpenVEX export incl. the never-fake-green guard, the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (incl. `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, the Ed25519 capsule signing with tamper detection, the regression-blame path overlap (no causation claim), the offline evidence explorer, the adversarial self-proof (`reachgate selftest`: an invariant regression test that returns non-zero if a FAIL leg unexpectedly passes), derived fix-verification proof with markdown output, the machine-checkable Evidence Contract validator, the fake-green rejection demo fixtures, the CI gate templates (contract-check + standalone), and the judge-proof generator). Plus 5 marked `standalone` tests that verify a real bare `pip install` in a clean venv outside the checkout (deselected by default; run with `python -m pytest -m standalone`). Run with:
 ```bash
-pytest
+python -m pytest
 ```
 
-| Testbestand | Wat het test |
+| Test file | What it tests |
 |---|---|
-| `test_config.py` | YAML-laden, glob matching (`**`, `*`, `?`), foutgevallen |
-| `test_policy_engine.py` | Alle 4 regels, drempellogica, receipt-serialisatie, de "flip" (zelfde finding, ander resultaat) |
-| `test_graph_walker.py` | Location-parsing, no-location edge case, path-extractie uit mock-responses |
-| `test_orbit_client.py` | Query-bouw, response-parsing, edge-filtering, respx-fixtures over live-captured responses |
-| `test_path_strategy.py` | BoundedBFS: direct hit, 1-hop, N-hop, geen pad, max_hops limiet, neighbor-cache |
-| `test_search_outcome.py` | Terminatie-rapportage per walk: path_found, frontier_exhausted, max_hops_hit, visited_cap_hit, timeout_hit, API-errors |
-| `test_unknown_verdict.py` | UNKNOWN bij elke insufficient-evidence reden; NOT_REACHABLE alleen bij uitgeputte frontier; certificate-assemblage; fingerprint stabiel over runs |
-| `test_certificate.py` | Fingerprint-determinisme, gevoeligheid (verdict/severity/policy/surface), globs-hash orde-onafhankelijk |
-| `test_artifact.py` | JSON-artifact schema, serialiseerbaarheid, certificate-render in Markdown, UNKNOWN-render (🟡) |
-| `test_receipt.py` | Mermaid-rendering, node-labels, quote-escaping, plaintext pad |
-| `test_findings.py` | GitLab SAST/native JSON input, location-normalisatie, deterministische uuid-fallback, no-location behoud |
+| `test_config.py` | YAML loading, glob matching (`**`, `*`, `?`), error cases |
+| `test_policy_engine.py` | All 4 rules, threshold logic, receipt serialization, the "flip" (same finding, different result) |
+| `test_graph_walker.py` | Location parsing, no-location edge case, path extraction from mock responses |
+| `test_orbit_client.py` | Query building, response parsing, edge filtering, respx fixtures over live-captured responses |
+| `test_path_strategy.py` | BoundedBFS: direct hit, 1-hop, N-hop, no path, max_hops limit, neighbor cache |
+| `test_search_outcome.py` | Termination reporting per walk: path_found, frontier_exhausted, max_hops_hit, visited_cap_hit, timeout_hit, API errors |
+| `test_unknown_verdict.py` | UNKNOWN for every insufficient-evidence reason; NOT_REACHABLE only on an exhausted frontier; certificate assembly; fingerprint stable across runs |
+| `test_certificate.py` | Fingerprint determinism, sensitivity (verdict/severity/policy/surface), globs hash order-independent |
+| `test_artifact.py` | JSON artifact schema, serializability, certificate render in Markdown, UNKNOWN render (🟡) |
+| `test_receipt.py` | Mermaid rendering, node labels, quote escaping, plaintext path |
+| `test_findings.py` | GitLab SAST/native JSON input, location normalization, deterministic uuid fallback, no-location retention |
 | `test_actions_idempotency.py` | MR note pagination, marker parsing, created/updated/unchanged upsert, duplicate-key warning, no dynamic metrics in marker |
 
 **Fixtures** in `tests/fixtures/`:
-- `orbit_neighbors_*.json` - live-captured neighbors-responses
-- `orbit_vulnerability_*.json` - live-captured occurrence-responses
-- `finding_*.json` - testfinding data
+- `orbit_neighbors_*.json` - live-captured neighbors responses
+- `orbit_vulnerability_*.json` - live-captured occurrence responses
+- `finding_*.json` - test finding data
 
 ---
 
-## 10. Bekende beperkingen en beslissingen
+## 10. Known limitations and decisions
 
-### Agent runtime beperking (OPGELOST via MCP, 11 juni 2026)
+### Agent runtime limitation (RESOLVED via MCP, 11 June 2026)
 
-De native Orbit-tools van de custom agent werken nergens (web Duo Chat noch VS Code extension voert ze uit). **Doorbraak: de Orbit MCP server in VS Code lost dit volledig op.**
+The native Orbit tools of the custom agent work nowhere (neither web Duo Chat nor the VS Code extension executes them). **Breakthrough: the Orbit MCP server in VS Code fully resolves this.**
 
-**Werkende setup (live geverifieerd 11 juni 2026):**
-- `C:\Users\moham\AppData\Roaming\GitLab\duo\mcp.json` (user-level) en `.gitlab/duo/mcp.json` (repo) bevatten:
+**Working setup (live-verified 11 June 2026):**
+- `C:\Users\moham\AppData\Roaming\GitLab\duo\mcp.json` (user-level) and `.gitlab/duo/mcp.json` (repo) contain:
   ```json
   {
     "mcpServers": {
@@ -519,93 +537,93 @@ De native Orbit-tools van de custom agent werken nergens (web Duo Chat noch VS C
     }
   }
   ```
-  Het `"type": "http"` veld is **verplicht** - zonder dit veld geeft de MCP Dashboard "Invalid configuration".
-- MCP Dashboard ("GitLab: Show MCP Dashboard") toont status **connected**, transport http, 2 tools: `list_commands` en `invoke_command` (wrapper; `query_graph` en `get_graph_schema` zitten als commands binnen `invoke_command`).
-- Tools pre-approved via de dashboard (staat nu in `.gitlab/duo/mcp.json` als `approvedTools`).
+  The `"type": "http"` field is **required** - without this field the MCP Dashboard reports "Invalid configuration".
+- The MCP Dashboard ("GitLab: Show MCP Dashboard") shows status **connected**, transport http, 2 tools: `list_commands` and `invoke_command` (a wrapper; `query_graph` and `get_graph_schema` live as commands inside `invoke_command`).
+- Tools pre-approved via the dashboard (now stored in `.gitlab/duo/mcp.json` as `approvedTools`).
 
-**Live agent-run bewijs (11 juni 2026):** Duo Chat agentic mode in VS Code laadde de `/reachgate` skill, voerde echte Orbit-queries uit via `invoke_command` (query_graph), corrigeerde zelf DSL-fouten via `get_query_dsl`, vond de link via een `ImportedSymbol` node (zie hieronder), en produceerde het exacte receipt (REACHABLE, score 85). Work item #3 is gekoppeld aan deze gedocumenteerde live agentic run; claim die provenance alleen samen met de run-log of recording.
+**Live agent-run evidence (11 June 2026):** Duo Chat agentic mode in VS Code loaded the `/reachgate` skill, ran real Orbit queries via `invoke_command` (query_graph), self-corrected DSL errors via `get_query_dsl`, found the link via an `ImportedSymbol` node (see below), and produced the exact receipt (REACHABLE, score 85). Work item #3 is linked to this documented live agentic run; only claim that provenance together with the run log or recording.
 
-**Belangrijke graafvondst:** voor de docs-site (JavaScript) heeft Orbit **geen IMPORTS/CALLS edges** tussen de relevante nodes; de import-relatie zit in `ImportedSymbol` nodes (`file_path`, `identifier_name`, `import_path`, `import_type=NamedImport`). SKILL.md heeft nu een fallback-stap die dit beschrijft. De Python-engine vond eerder wel een pad via neighbors - beide bewijsroutes zijn geldig.
+**Important graph finding:** for the docs site (JavaScript), Orbit has **no IMPORTS/CALLS edges** between the relevant nodes; the import relationship lives in `ImportedSymbol` nodes (`file_path`, `identifier_name`, `import_path`, `import_type=NamedImport`). SKILL.md now has a fallback step that describes this. The Python engine did earlier find a path via neighbors - both evidence routes are valid.
 
-**Beslissing:** De Python-engine blijft de canonieke deterministische implementatie (CI/CD, batch). De agent + skill + Orbit MCP is de live agentic demo-route. Beide draaien op echte Orbit-data.
+**Decision:** The Python engine remains the canonical deterministic implementation (CI/CD, batch). The agent + skill + Orbit MCP is the live agentic demo route. Both run on real Orbit data.
 
-### Demo-project indexering
+### Demo project indexing
 
-Ons provisioned project staat niet in de Orbit-index. Demo-data: GitLab docs-site project, met echte SAST findings en echte geïndexeerde broncode. Dit is een sterker voorbeeld: echte productie findings op echte code.
+Our provisioned project is not in the Orbit index. Demo data: the GitLab docs-site project, with real SAST findings and real indexed source code. This is a stronger example: real production findings on real code.
 
-### Prestaties
+### Performance
 
-Finding B (NOT_REACHABLE) kost 41 seconden: elke BFS-stap is 1 synchrone HTTPS-call (~1,5s). De shared cache helpt als meerdere findings worden verwerkt. Voor productie: async + connection pooling. Voor de demo is 50 seconden acceptabel en toont juist de echtheid.
+Finding B (NOT_REACHABLE) takes 41 seconds: each BFS step is 1 synchronous HTTPS call (~1.5s). The shared cache helps when multiple findings are processed. For production: async + connection pooling. For the demo, 50 seconds is acceptable and actually demonstrates authenticity.
 
-### Entry-point afhankelijkheid
+### Entry-point dependency
 
-ReachGate is zo goed als zijn `reachgate.yml`. Een onvolledige declaratie van entry points leidt tot false negatives (NOT_REACHABLE terwijl de code wel bereikbaar is). Dit is een bewuste designbeslissing: de gebruiker verklaart de attack surface expliciet.
+ReachGate is only as good as its `reachgate.yml`. An incomplete declaration of entry points leads to false negatives (NOT_REACHABLE while the code is in fact reachable). This is a deliberate design decision: the user declares the attack surface explicitly.
 
 ---
 
-## 11. Laatste submission-status
+## 11. Latest submission status
 
-### Verplicht voor inzending (voor 24 juni 14:00 ET)
+### Required for submission (before 24 June 14:00 ET)
 
-- [x] **README.md bijgewerkt** (11 juni) - 170+ tests, Fase 1/2 live proof, CI/CD + live demo + skill secties toegevoegd.
-- [x] **Live acties getest** (10 juni) - work item #2 via `tools/live_actions_check.py` (destijds `tools/test_actions.py`); work item #3 gekoppeld aan de live agent-run (provenance alleen claimen met run-log/recording).
-- [x] **CI/CD pipeline** (11 juni) - `.gitlab-ci.yml`, MR !1/!2/!3 live proof groen.
-- [x] **Fase 2 MR-idempotency live bewezen** (11 juni) - MR !3: run 1 `created`, rerun `unchanged`, comment-count 2 -> 2, artifact opnieuw geupload, issue-count 6 -> 6.
-- [x] **Fase 2 proof assets opgeslagen** - screenshots in `docs/img/mr3-*.png`, artifact snapshot in `docs/proof/mr3-reachgate-receipts-rerun.json`.
-- [x] **Agentic E2E werkend** (11 juni) - Orbit MCP in VS Code + skill + agent, zie sectie 10.
-- [x] **GitHub repo bijgewerkt** - `origin/main` en `gitlab/main` synced.
-- [ ] **Demo-video opnemen** (<= 3 minuten) - huidig `SCRIPT.md`: open met het probleem + Orbit als graph evidence, maak MR !3 de hoofd-demo (REACHABLE/NOT_REACHABLE receipts, certificates, idempotente rerun, artifact), toon agentic mode alleen als korte `/reachgate`/Orbit MCP-flash, sluit af met proof gallery + offline verifier.
-- [ ] **Devpost-inzending afronden** - tekst uit `docs/DEVPOST.md`, echte video-URL invullen, dan indienen op https://gitlab-transcend.devpost.com/.
+- [x] **README.md updated** (11 June) - 170+ tests, Phase 1/2 live proof, CI/CD + live demo + skill sections added.
+- [x] **Live actions tested** (10 June) - work item #2 via `tools/live_actions_check.py` (formerly `tools/test_actions.py`); work item #3 linked to the live agent run (only claim provenance with the run log/recording).
+- [x] **CI/CD pipeline** (11 June) - `.gitlab-ci.yml`, MR !1/!2/!3 live proof green.
+- [x] **Phase 2 MR idempotency proven live** (11 June) - MR !3: run 1 `created`, rerun `unchanged`, comment count 2 -> 2, artifact re-uploaded, issue count 6 -> 6.
+- [x] **Phase 2 proof assets saved** - screenshots in `docs/img/mr3-*.png`, artifact snapshot in `docs/proof/mr3-reachgate-receipts-rerun.json`.
+- [x] **Agentic E2E working** (11 June) - Orbit MCP in VS Code + skill + agent, see section 10.
+- [x] **Feature branch synced** - `origin/ambitious/fix-verification` and `gitlab/ambitious/fix-verification` point at the same submission-ready work. Before final submission, either merge this branch into `main` or make the submitted branch explicit.
+- [ ] **Record demo video** (<= 3 minutes) - current `SCRIPT.md`: lead with the problem, show the SAST flip (REACHABLE path + exhaustive NOT_REACHABLE within bounds), show `reachgate selftest` / fake-green rejection, mention UNKNOWN honesty, then close with offline verification. MR !3 idempotency remains useful if time remains, but is no longer the main act.
+- [ ] **Finish Devpost submission** - text from `docs/DEVPOST.md`, fill in the real video URL, then submit at https://gitlab-transcend.devpost.com/.
 
 ### Private pre-submit cleanup
 
-- [ ] **AI Catalog opruimen buiten de repo** - `reachgate-test` en `schema-probe` throwaway agents verwijderen indien ze nog zichtbaar zijn. Dit raakt geen product-code of proof-assets.
+- [ ] **Clean up the AI Catalog outside the repo** - remove the `reachgate-test` and `schema-probe` throwaway agents if they are still visible. This does not touch product code or proof assets.
 
-### Backlog na de inzending
+### Backlog after submission
 
-- Blocking gate-mode uitwerken bovenop de huidige advisory MR triage (`allow_failure: true`).
-- Entry-point auto-suggesties uit Orbit onderzoeken als UX-upgrade.
-- Async/connection-pooling voor snellere grote graph walks.
+- Build out a blocking gate mode on top of the current advisory MR triage (`allow_failure: true`).
+- Investigate entry-point auto-suggestions from Orbit as a UX upgrade.
+- Async/connection pooling for faster large graph walks.
 
 ---
 
-## 12. Omgevingsvariabelen en draaien
+## 12. Environment variables and running
 
-### Vereiste variabelen
+### Required variables
 
 ```powershell
 $env:GITLAB_URL   = "https://gitlab.com"
-$env:GITLAB_TOKEN = "glpat-xxxxx"           # PAT met api-scope
+$env:GITLAB_TOKEN = "glpat-xxxxx"           # PAT with api scope
 $env:GITLAB_PROJECT_ID = "83119911"         # Hackathon project ID
 ```
 
-### Installatie
+### Installation
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-### Demo draaien (aanbevolen voor video)
+### Running the demo (recommended for the video)
 
 ```powershell
 $env:GITLAB_TOKEN = "glpat-xxxxx"
 python tools/demo_e2e.py
 ```
 
-### Volledige engine draaien
+### Running the full engine
 
 ```bash
-# na: pip install -e ".[dev]"
+# after: pip install -e ".[dev]"
 python -m reachgate.agent
 ```
 
 ### Tests
 
 ```bash
-pytest
+python -m pytest
 ```
 
-### Diagnostiek (extra output over import-resolutie)
+### Diagnostics (extra output about import resolution)
 
 ```powershell
 $env:REACHGATE_DIAGNOSE = "1"

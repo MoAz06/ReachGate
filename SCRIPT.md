@@ -1,26 +1,50 @@
 # ReachGate Demo Video Script
 
-Doel: een demo-video van maximaal 3 minuten voor GitLab Transcend Showcase Track.
+Goal: a demo video of at most 3 minutes for the GitLab Transcend Showcase Track.
 
-Harde jury-focus:
+Hard jury focus:
 
 - Technological Implementation: live Orbit use, deterministic engine, certificates, tests, CI artifact.
 - Design and Usability: useful MR comments, no duplicate spam on rerun, reviewers stay in GitLab.
 - Potential Impact: scanner triage noise is real; reachability helps teams prioritize what matters.
 - Quality of the Idea: Orbit is used as an evidence graph for security reachability, not as a wrapper around an LLM opinion.
 
-## Harde Review Van Het Oude Script
+## Recommended final recording flow
 
-Het oude script was technisch sterk, maar niet maximaal jurygericht.
+This is the recommended ~2-minute order for the final recording. It leads with
+the evidence story (the part that is strongest and most current). The full
+3-minute table and the backup version below now follow the same story. MR !3
+idempotency is useful supporting evidence if time remains, not the main act.
 
-- Te zwak in de eerste 20 seconden: de hook legde het probleem uit, maar niet scherp genoeg waarom dit een unique Orbit use case is.
-- Potential Impact kwam te laat en te impliciet. De jury moet meteen horen dat dit scanner-noise en MR-triage oplost.
-- Design and Usability zat verstopt in de idempotency-rerun. Maak dat expliciet: reviewers krijgen bewijs in de MR zonder comment-spam.
-- De certificate-uitleg was te lang. Toon het certificaat, noem alleen wat het bewijst.
-- De proof gallery was goed, maar mag geen losse rondleiding worden. Gebruik het als afsluitend verificatiebewijs.
-- Agentic mode is sterk, maar zonder schone video-proof kan het de demo rommelig maken. Voor deze 3 minuten wint MR/CI-proof.
+Use `docs/DEMO_COMMANDS.md` as the copy-paste command sheet while recording.
 
-## Beste Opening Sentence
+1. **Problem (~0:00-0:15).** Scanners flood teams with alerts and ask you to *trust* a verdict. The real question in a merge request is: can this vulnerable code actually be reached from the application's entry points?
+2. **SAST flip (~0:15-0:55).** Open `explorer.html` with `docs/proof/mr2-reachgate-receipts.json` already loaded — this is the main act, and it is **offline, token-free, and reliable for recording**. The receipt was captured from a real Orbit run. Show the code-reachability split on findings that have a code location: one finding is `REACHABLE` with a concrete graph path (entry point → vulnerable definition), the other is an exhaustive `NOT_REACHABLE` **within the configured search bounds**. Same graph, opposite triage. (Optional, not the recording route: with a `GITLAB_TOKEN` you can regenerate the same flip live against Orbit via `python tools/demo_e2e.py` — useful as extra proof the receipt is a real run, not a fixture.)
+3. **Fake-green rejection (~0:55-1:20).** Show that overclaiming evidence is refused:
+   - `reachgate selftest` — an adversarial invariant test (not a formal certification): must-pass evidence passes and must-fail/fake-green evidence is rejected for the right reason; `UNKNOWN` stays an evidence gap; the machine-checkable Evidence Contract is enforced; if a safety rule ever regressed it exits non-zero, **or**
+   - `reachgate contract-check tests/fixtures/contract_violations/not-reachable-timeout-hit.json` — a synthetic receipt that claims a safe `NOT_REACHABLE` while its search timed out → FAIL, exit 1.
+4. **UNKNOWN honesty (~1:20-1:40).** Dependency/SCA findings without a code anchor (e.g. container/kernel CVEs) become a typed `UNKNOWN` / needs-review with a next action — never a fake safe verdict. On real dependency findings without a code anchor, ReachGate returns UNKNOWN instead of fake-safe. `UNKNOWN` is never treated as safe; it is the mechanism that stops ReachGate from lying when there is no code to walk to.
+5. **Offline verification (~1:40-1:55).** `reachgate verify` replays the captured receipts and cross-checks the standards exports **with no token and no network** — a judge can verify the proof offline, even though *generating* the live flip needs a token.
+6. **Closing line (~1:55-2:00).** "Most scanners output findings. ReachGate outputs graph-backed, replayable, machine-checkable evidence."
+
+Notes for this flow:
+
+- **Live flip vs. offline proof:** generating the flip needs a token / live Orbit; verifying the captured proof does not. Keep that distinction explicit on screen.
+- **The MR !3 idempotency demo is still useful** (reviewers get durable evidence without duplicate comment spam) but it is **no longer the main act** — show it only if time remains, after the evidence story above.
+- `blame` (if shown) reports only which changed files **overlap** a reachable path — never a causation or "this change introduced the path" claim. `fixcheck` (if shown) *verifies a fix from before/after receipts*; it does not modify code.
+
+## Hard Review Of The Old Script
+
+The old script was technically strong, but not maximally jury-focused.
+
+- Too weak in the first 20 seconds: the hook explained the problem, but not sharply enough why this is a unique Orbit use case.
+- Potential Impact came too late and too implicitly. The jury must hear immediately that this solves scanner noise and MR triage.
+- Design and Usability was hidden in the idempotency rerun. Make it explicit: reviewers get evidence in the MR without comment spam.
+- The certificate explanation was too long. Show the certificate, state only what it proves.
+- The proof gallery was good, but must not become a loose walkthrough. Use it as closing verification evidence.
+- Agentic mode is strong, but without clean video proof it can make the demo messy. For these 3 minutes, MR/CI proof wins.
+
+## Best Opening Sentence
 
 Most security tools stop at "this vulnerability exists"; ReachGate answers the question reviewers actually need in a merge request: can this vulnerable code be reached from the application's entry points?
 
@@ -28,17 +52,14 @@ Most security tools stop at "this vulnerability exists"; ReachGate answers the q
 
 | Time | Screen | Voice-over | Criteria hit | Do not say |
 |---|---|---|---|---|
-| 0:00-0:15 | README title/tagline or Devpost title | Most security tools stop at "this vulnerability exists." ReachGate answers the question reviewers actually need in a merge request: can this vulnerable code be reached from the application's entry points? | Potential Impact, Quality of Idea | Do not say it proves all security risk. |
-| 0:15-0:32 | README "What it does", CI section, or `reachgate.yml` entrypoints | For real projects, the CI job can load GitLab SAST or native JSON findings. You declare the attack surface in `reachgate.yml`, then ReachGate walks Orbit's files, definitions, imports and calls from those entry points to the vulnerable definition. | Technological Implementation, Design and Usability | Do not say ReachGate guesses entry points. |
-| 0:32-0:45 | README architecture or tests line | The key design choice is that the model never decides the verdict. The engine is deterministic: fixed rules, bounded graph search, 282 focused tests, and a receipt explaining the result. | Technological Implementation, Quality of Idea | Do not call the score model confidence. |
-| 0:45-0:55 | `/reachgate` skill + `agent/system_prompt.md` + Orbit MCP config | ReachGate also runs as a `/reachgate` skill through Orbit MCP. Same deterministic workflow; the agent executes, not decides. | Technological Implementation, Quality of Idea | Do not say the agent decided the verdict. Do not mention work item #3 unless its run log or recording is on screen; work item #5 is the CI/action-flow item, not agentic. |
-| 0:55-1:20 | MR !3 reachable receipt with graph path visible | Back in CI, here is the live MR proof. The SSRF finding is `REACHABLE` because Orbit found a graph path from `content/frontend/404/archives_redirect.js` to `getArchivesVersions`. That path triggers fixed rule weights: path exists, direct import, high severity. | Technological Implementation, Design and Usability | Do not say "the AI found this." |
-| 1:20-1:30 | MR !3 reachable certificate opened | The certificate shows policy version, search bounds, evidence mode, and whether any bound cut the search short. | Technological Implementation, Design and Usability | Do not read every field slowly. |
-| 1:30-1:55 | MR !3 not-reachable receipt and certificate | The second finding is the important contrast. Same pipeline, same Orbit graph, different result: `NOT_REACHABLE`. ReachGate only says that because the frontier was exhausted, no search bound was hit, and there were zero API errors. If evidence is incomplete, it returns `UNKNOWN`, not fake green. | Technological Implementation, Quality of Idea | Do not say globally unreachable. Say within configured bounds. |
-| 1:55-2:20 | MR !3 pipelines tab with two passed MR runs | This is not a one-shot demo. MR !3 was run twice. The first pipeline created the receipt comments; the rerun passed again on the same merge request. | Design and Usability, Technological Implementation | Do not imply the blocked branch pipeline matters. Focus on the two passed MR runs. |
-| 2:20-2:38 | MR !3 job log showing `unchanged` for both fingerprints | On rerun, ReachGate logs `unchanged` for both stable fingerprints. The comment count stays at two and the MR flow creates no work items. That means reviewers get durable evidence without duplicate noise. | Design and Usability, Potential Impact | Do not claim work-item idempotency. Only MR comments. |
-| 2:38-2:48 | MR !3 artifact dropdown or artifact upload log | The CI job still uploads `reachgate-receipts.json` on every run, so automation gets a machine-readable artifact with the verdicts, fingerprints and certificates. | Technological Implementation, Design and Usability | Do not claim native Vulnerability Report integration. |
-| 2:48-3:00 | README Proof Gallery or Devpost final screen | The repo links live MRs, screenshots, artifacts, and an offline verifier. ReachGate turns Orbit into evidence, not LLM verdicts. | Technological Implementation, Design and Usability, Quality of Idea, Potential Impact | Do not linger; this is verification and closing. Do not call it a blocking CI gate; the demo job is advisory (allow_failure). |
+| 0:00-0:15 | README title/tagline or Devpost title | Security scanners tell you a vulnerability exists. They usually do not prove whether application code can actually reach it. That is why teams waste time triaging noise. | Potential Impact, Quality of Idea | Do not say it proves all security risk. |
+| 0:15-0:35 | README "What it does", `reachgate.yml`, or architecture line | ReachGate uses GitLab Orbit's code graph to walk from declared entry points to vulnerable code. The AI does not decide the verdict; a deterministic engine does. | Technological Implementation, Quality of Idea | Do not say ReachGate guesses entry points or that the model decides. |
+| 0:35-1:05 | `explorer.html` with `docs/proof/mr2-reachgate-receipts.json` loaded | This receipt was captured from a real Orbit run and opened offline. One finding is `REACHABLE`: there is a concrete graph path from an entry file to the vulnerable definition. The other is `NOT_REACHABLE`: the search exhausted the configured bounds, with no API errors. | Technological Implementation, Design and Usability | Do not say globally unreachable. Say within configured bounds. |
+| 1:05-1:25 | Explorer/Judge Pack/terminal ready | The third verdict is `UNKNOWN`. That is not a failure. It means ReachGate did not have enough evidence, so it refuses to call something safe. No fake green. | Quality of Idea, Potential Impact | Do not treat UNKNOWN as safe or as a bug. |
+| 1:25-1:55 | Terminal: `reachgate selftest` | This is the key: ReachGate tests its own evidence rules. Real evidence passes. Fake-green evidence fails. UNKNOWN stays an evidence gap. The machine-checkable Evidence Contract is enforced; if the tool ever starts overclaiming, this exits non-zero. | Technological Implementation, Quality of Idea | Do not call it formal certification. It is an adversarial invariant self-check. |
+| 1:55-2:25 | Terminal: `reachgate verify` | Now the captured proof is verified offline. No token, no network, no trust in my screen recording. The verifier checks the receipts, fingerprints, exhaustive negative proof, UNKNOWN honesty, and standards exports. | Technological Implementation, Design and Usability | Do not imply this regenerates live Orbit data. It verifies captured evidence. |
+| 2:25-2:45 | README/Judge Pack portable evidence section | The same evidence can be exported to standard formats and checked in CI, but the important part is that every downstream claim stays tied back to the receipt. | Design and Usability, Potential Impact | Do not rush through a buzzword list of every feature. |
+| 2:45-3:00 | Final screen: explorer, judge-proof, or README title | Most scanners output findings. ReachGate outputs graph-backed, replayable, machine-checkable evidence: an offline-verifiable evidence layer built on GitLab Orbit. | Quality of Idea, Potential Impact | Keep it short. Do not add new claims in the final line. |
 
 ## Backup 2-Minute Version
 
@@ -46,11 +67,11 @@ Most security tools stop at "this vulnerability exists"; ReachGate answers the q
 |---|---|---|
 | 0:00-0:12 | README title/tagline | Most security tools stop at "this vulnerability exists." ReachGate asks whether the vulnerable code is actually reachable from the application's entry points. |
 | 0:12-0:28 | `reachgate.yml` or architecture | It uses GitLab Orbit as a code graph: declared entry points, files, definitions, imports and calls. The model never decides; the deterministic engine does. |
-| 0:28-0:55 | MR !3 reachable receipt | This SSRF is `REACHABLE`: Orbit found a concrete graph path from an entry point to the vulnerable definition, and fixed rule weights produce the verdict. |
-| 0:55-1:18 | MR !3 not-reachable certificate | This path traversal is `NOT_REACHABLE` only because the search exhausted its frontier within bounds, with zero API errors. Otherwise ReachGate would say `UNKNOWN`. |
-| 1:18-1:40 | MR !3 pipelines + `unchanged` job log | Rerunning the MR pipeline logs `unchanged` for both fingerprints, keeps the comments stable, and creates no work item from the MR flow. |
-| 1:40-1:52 | Artifact dropdown/log | Every run still uploads `reachgate-receipts.json`, giving automation machine-readable verdicts and certificates. |
-| 1:52-2:00 | README Proof Gallery | The proof is in GitLab: live MRs, logs, screenshots and JSON artifacts. ReachGate shows what Orbit can prove, not what a model thinks. |
+| 0:28-0:55 | `explorer.html` with MR2 receipt loaded | One finding is `REACHABLE` with a concrete graph path. One is `NOT_REACHABLE` only because the search exhausted within bounds with zero API errors. |
+| 0:55-1:10 | Explorer/Judge Pack | `UNKNOWN` is not a shrug; it is a typed evidence gap. ReachGate refuses to fake a safe result when there is no code anchor or the search is incomplete. |
+| 1:10-1:35 | Terminal: `reachgate selftest` | Real evidence passes, fake-green evidence fails, UNKNOWN stays an evidence gap, and the Evidence Contract is enforced. |
+| 1:35-1:52 | Terminal: `reachgate verify` | The captured proof verifies offline: no token, no network, no trust in the demo. |
+| 1:52-2:00 | README/Judge Pack | Most scanners output findings. ReachGate outputs graph-backed, replayable, machine-checkable evidence. |
 
 ## Shot Checklist
 
@@ -58,21 +79,21 @@ Must include:
 
 1. README or Devpost title/tagline.
 2. `reachgate.yml` or README architecture showing entrypoints and Orbit graph workflow.
-3. Agentic signal: the `/reachgate` skill, `agent/system_prompt.md`, and Orbit MCP config. Only show work item #3 if the recorded Duo/VS Code run is on screen.
-4. MR !3 reachable receipt with red `REACHABLE` path visible.
-5. MR !3 reachable certificate opened.
-6. MR !3 not-reachable receipt with green `NOT_REACHABLE` and certificate opened.
-7. MR !3 pipelines tab showing the two passed MR runs.
-8. MR !3 job log showing `unchanged` for both fingerprints.
-9. MR !3 artifact dropdown or upload log for `reachgate-receipts.json`.
-10. README Proof Gallery.
+3. `explorer.html` with `docs/proof/mr2-reachgate-receipts.json` loaded.
+4. The `REACHABLE` row with a concrete path visible.
+5. The `NOT_REACHABLE` row and the phrase "within configured bounds" / exhaustive proof.
+6. A clear spoken line that `UNKNOWN` is an evidence gap, never safe.
+7. Terminal: `reachgate selftest` exiting 0.
+8. Terminal: `reachgate verify` exiting 0.
+9. A short final screen: README, Judge Pack, or judge-proof page.
 
 Optional if time remains:
 
-1. MR !2 as older phase-1 proof.
-2. JSON artifact opened in a viewer.
-3. Devpost draft links section.
-4. 282 focused tests line from README.
+1. MR !3 idempotency proof: rerun logs `unchanged`, comments stay stable.
+2. `/reachgate` skill / Orbit MCP signal.
+3. JSON artifact opened in a viewer.
+4. Devpost draft links section.
+5. 422 focused tests at the time of recording (pytest remains the source of truth) line from README.
 
 Cut first if too long:
 
@@ -80,6 +101,7 @@ Cut first if too long:
 2. Proof gallery walkthrough.
 3. Artifact JSON internals.
 4. Any architecture detail beyond "Orbit graph + deterministic engine".
+5. Feature tours of blame, capsule, signing, explorer internals, or CI templates.
 
 ## Claims To Make
 
@@ -87,7 +109,9 @@ Cut first if too long:
 - The verdict is deterministic; the LLM does not decide.
 - `NOT_REACHABLE` means exhaustive within configured bounds.
 - Incomplete evidence becomes `UNKNOWN`.
-- MR triage comments are fingerprint-idempotent.
+- The machine-checkable Evidence Contract rejects fake-green evidence and keeps `UNKNOWN` reviewable.
+- The captured proof can be verified offline: no token, no network.
+- MR triage comments are fingerprint-idempotent if you show the MR !3 rerun.
 - The CI job uploads a machine-readable JSON receipt artifact.
 - "Gate" means a decision/review gate (gate-ready reachability evidence in the MR), not a blocking CI gate: the bundled `reachgate-triage` job is advisory (`allow_failure: true`) and never blocks a merge on its own.
 - ReachGate also has a published `/reachgate` skill through Orbit MCP in VS Code Duo Chat.
@@ -110,14 +134,20 @@ Cut first if too long:
 
 ## Screen-By-Screen Notes
 
+- Best main demo screen: `explorer.html` with `docs/proof/mr2-reachgate-receipts.json` loaded and zoomed to 125-150%.
+- Best terminal proof command: `reachgate selftest`.
+- Best offline replay command: `reachgate verify`.
+- Best judge overview page: `docs/JUDGE_PACK.md`.
 - Best proof image for red verdict: `docs/img/mr3-reachable-comment-certificate.png`.
 - Best proof image for green verdict: `docs/img/mr3-not-reachable-comment-certificate.png`.
-- Best proof image for rerun workflow: `docs/img/mr3-pipelines-two-passed-runs.png`.
-- Best proof image for idempotency log: `docs/img/mr3-job-unchanged-ssrf-log.png` plus `docs/img/mr3-job-unchanged-pathtraversal-artifact-log.png`.
+- Best optional rerun workflow image: `docs/img/mr3-pipelines-two-passed-runs.png`.
+- Best optional idempotency log image: `docs/img/mr3-job-unchanged-ssrf-log.png` plus `docs/img/mr3-job-unchanged-pathtraversal-artifact-log.png`.
 - Best proof image for artifact: `docs/img/mr3-artifact-dropdown.png`.
 - Best machine-readable proof: `docs/proof/mr3-reachgate-receipts-rerun.json`.
 - When recording GitLab, zoom into the receipt, certificate, log lines and artifacts. Do not linger on the "docs-only" MR title; it is proof infrastructure, not the product message.
 
-## Beste Closing Sentence
+## Best Closing Sentence
 
-ReachGate shows what GitLab Orbit can prove: deterministic reachability evidence in the merge request, honest unknowns when the graph is incomplete, and no LLM verdicts.
+Most scanners output findings. ReachGate outputs graph-backed, replayable,
+machine-checkable evidence: an offline-verifiable evidence layer built on
+GitLab Orbit.

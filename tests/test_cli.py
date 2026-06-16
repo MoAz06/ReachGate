@@ -89,27 +89,33 @@ def test_coverage_missing_file_is_clean_error(tmp_path, capsys):
     assert "file not found" in err
 
 
-# --- repo-delegating commands fail loudly outside a checkout ---------------
+# --- offline commands no longer require a repo checkout --------------------
+# After the standalone refactor, verify / export-* / manifest resolve their
+# inputs via reachgate._resources (the bundled receipts when there is no
+# checkout) and no longer gate on _find_repo_root. Forcing _find_repo_root to
+# None must NOT make them fail: that is the whole point of "works after a bare
+# pip install". (The real bare-install behaviour is exercised end-to-end by the
+# marked standalone gate test, tests/test_standalone_install.py.)
 
-def test_verify_outside_repo_fails_loudly(monkeypatch, capsys):
+def test_verify_does_not_require_repo(monkeypatch, capsys):
     monkeypatch.setattr(cli, "_find_repo_root", lambda: None)
     rc = cli.main(["verify"])
-    assert rc == 2
-    err = capsys.readouterr().err
-    assert "repo checkout" in err
-    assert "pip install" in err
+    assert rc == 0
+    assert "ReachGate proof verified" in capsys.readouterr().out
 
 
-def test_export_sarif_outside_repo_fails_loudly(monkeypatch, capsys):
+def test_export_sarif_does_not_require_repo(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "_find_repo_root", lambda: None)
-    rc = cli.main(["export-sarif"])
-    assert rc == 2
-    assert "repo checkout" in capsys.readouterr().err
+    out = tmp_path / "o.sarif.json"
+    assert cli.main(["export-sarif", "--output", str(out)]) == 0
+    assert out.exists()
 
 
-def test_manifest_outside_repo_fails_loudly(monkeypatch, capsys):
+def test_manifest_does_not_require_repo(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "_find_repo_root", lambda: None)
-    assert cli.main(["manifest"]) == 2
+    out = tmp_path / "o.manifest.json"
+    assert cli.main(["manifest", "--output", str(out)]) == 0
+    assert out.exists()
 
 
 # --- scan is refused, never faked ------------------------------------------

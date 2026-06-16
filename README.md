@@ -90,7 +90,7 @@ That last rule is the point: ReachGate refuses to emit a clean VEX `not_affected
 
 ## Portable evidence layer — not just a scanner
 
-ReachGate is designed as an **offline-verifiable evidence layer**: the same receipts are emitted as replayable, standards-aligned evidence that downstream tooling consumes directly. The deterministic engine decides, the AI only explains, and every exported claim is cross-checked back against the receipts.
+ReachGate is designed as an **offline-verifiable evidence layer**: the same receipts are emitted as replayable, standards-aligned evidence that downstream tooling consumes directly. The deterministic engine decides, the AI only explains, and every exported claim is cross-checked back against the receipts. The [Evidence Contract](docs/EVIDENCE_CONTRACT.md) states exactly which claims downstream tools may draw from a receipt, and which they may not.
 
 - **OpenVEX** (`tools/export_vex.py` → `docs/proof/reachgate.openvex.json`) — CVE/SCA exploitability context (see above).
 - **SARIF 2.1.0** (`tools/export_sarif.py` → `docs/proof/reachgate.sarif.json`) — SAST/code-flow evidence: a REACHABLE path becomes a SARIF `codeFlow`/`threadFlow` over the real graph, NOT_REACHABLE stays "within configured search bounds", and UNKNOWN is a typed evidence gap, never presented as safe. Source locations are only emitted where the receipt carries a file — never invented.
@@ -108,9 +108,11 @@ For a guided walkthrough, see the [Judge Pack](docs/JUDGE_PACK.md). All claims a
 
 ## Command line
 
-Once installed (`pip install -e ".[dev]"`), the offline, deterministic surface is one `reachgate` command:
+Once installed (`pip install -e ".[dev]"`; add `".[dev,sign]"` for the optional signature/tamper check), the offline, deterministic surface is one `reachgate` command:
 
 ```bash
+reachgate --help                  # show the full offline evidence CLI
+reachgate selftest                # adversarial invariant test: real passes, fake-green fails
 reachgate coverage                 # verdict / UNKNOWN-reason / blind-spot report
 reachgate coverage --format html --output coverage.html  # same report as static HTML
 reachgate verify                   # verify receipts + cross-check OpenVEX/SARIF
@@ -119,11 +121,15 @@ reachgate export-sarif             # SARIF 2.1.0 from receipts
 reachgate manifest                 # sha256 evidence manifest
 reachgate proof                    # offline judge-proof HTML page
 reachgate policy explain           # read-only view of the recorded policy
+reachgate fixcheck BEFORE AFTER    # prove the reachability delta between two receipts
+reachgate contract-check RECEIPT.json   # enforce the Evidence Contract on receipts
+reachgate blame RECEIPTS.json --changed-files FILE  # path overlap only, never causation
+reachgate explorer --output explorer.html  # self-contained offline evidence explorer
 reachgate judge                    # one command: verify -> exports -> manifest -> proof
 reachgate capsule build            # portable evidence capsule (zip) in dist/
 ```
 
-`reachgate coverage` is the blind-spot report: verdict counts, UNKNOWN reasons with their typed next actions (from `guidance.py`), which findings lack a code anchor, and an honest limitations section — all derived from the captured receipts, offline (`--format json|html` and `--output` are supported). `reachgate judge` runs the whole offline pipeline end to end and prints the path to the judge-proof page (it never opens a browser). `reachgate capsule build` writes `dist/reachgate-evidence-capsule.zip`: a portable, offline-verifiable bundle (receipts, OpenVEX, SARIF, manifest, judge-proof HTML, Judge Pack, and a `HOW_TO_VERIFY.txt`) — deterministic and gitignored. `reachgate policy explain` prints the recorded policy version, threshold, rule weights, and search bounds straight from a receipt, with honest provenance. `export-vex`/`export-sarif`/`manifest`/`proof` accept `--output` to write anywhere; with no `--output` they write the tracked defaults under `docs/proof/`. `reachgate scan` is intentionally **not** offline: a real scan needs live Orbit and a token, so it is documented as a live workflow via `python -m reachgate.agent` and the CI job (see [GitLab CI setup](docs/GITLAB_CI_SETUP.md)). The CLI is package-safe: the export/verify commands read the repo's `tools/` and `docs/proof/`, and fail loudly with a helpful message when run outside a checkout. See [Integrations](docs/INTEGRATIONS.md) for the evidence-router story.
+`reachgate selftest` is the quickest "do not trust us, prove it" check: it accepts real evidence, rejects fake-green evidence, keeps `UNKNOWN` as an evidence gap, and runs the optional signature/tamper leg when installed with the `sign` extra (otherwise that leg is skipped honestly). `reachgate coverage` is the blind-spot report: verdict counts, UNKNOWN reasons with their typed next actions (from `guidance.py`), which findings lack a code anchor, and an honest limitations section — all derived from the captured receipts, offline (`--format json|html` and `--output` are supported). `reachgate judge` runs the whole offline pipeline end to end and prints the path to the judge-proof page (it never opens a browser). `reachgate capsule build` writes `dist/reachgate-evidence-capsule.zip`: a portable, offline-verifiable bundle (receipts, OpenVEX, SARIF, manifest, judge-proof HTML, Judge Pack, and a `HOW_TO_VERIFY.txt`) — deterministic and gitignored. `reachgate policy explain` prints the recorded policy version, threshold, rule weights, and search bounds straight from a receipt, with honest provenance. `reachgate blame` reports changed-file/path overlap only, never causation. `export-vex`/`export-sarif`/`manifest`/`proof` accept `--output` to write anywhere; with no `--output` they write the tracked defaults under `docs/proof/` in a checkout. The core offline CLI can also use bundled read-only proof receipts after a bare install, so `verify`, `coverage`, exports, `contract-check`, and the explorer stay useful outside the repo. `reachgate scan` is intentionally **not** offline: a real scan needs live Orbit and a token, so it is documented as a live workflow via `python -m reachgate.agent` and the CI job (see [GitLab CI setup](docs/GITLAB_CI_SETUP.md)). See [Integrations](docs/INTEGRATIONS.md) for the evidence-router story.
 
 ## CI/CD integration
 
@@ -160,10 +166,26 @@ It checks the captured receipt artifacts below against the verdicts the MR
 comments claim — matching fingerprints across MR !2 and MR !3, exhaustive
 `NOT_REACHABLE`, honest `UNKNOWN`, and zero API errors — and, when present,
 cross-checks the exported OpenVEX and SARIF back against those receipts. See
-[docs/JUDGE_REPLAY.md](docs/JUDGE_REPLAY.md) for the two-minute replay and
-[docs/JUDGE_PACK.md](docs/JUDGE_PACK.md) for the full judge walkthrough.
+[docs/JUDGE_REPLAY.md](docs/JUDGE_REPLAY.md) for the two-minute replay,
+[docs/JUDGE_PACK.md](docs/JUDGE_PACK.md) for the full judge walkthrough, and
+[docs/DEMO_COMMANDS.md](docs/DEMO_COMMANDS.md) for copy-pastable demo commands
+(including the "try to fake green" PASS/FAIL contrast).
 
 To compare two receipt artifacts as a security regression review, run `python tools/diff_receipts.py OLD NEW` (optionally with `--fail-on-new-reachable`).
+
+### Fix verification
+
+`reachgate fixcheck BEFORE.json AFTER.json` is a derived, offline layer that compares two receipt artifacts and proves whether reachability was **removed**, **introduced**, left **unchanged**, or is **incomparable**. It re-uses existing receipts and never re-decides a verdict or calls Orbit.
+
+It is deliberately conservative: ReachGate can compare two receipt artifacts and verify whether reachability was removed **only when the after receipt is exhaustive**. `reachability_removed` is claimed only when the before verdict is `REACHABLE`, the after verdict is `NOT_REACHABLE` with an exhaustive search (frontier exhausted, no bounds hit, 0 API errors), and the policy version is identical. An after `UNKNOWN`, a non-exhaustive `NOT_REACHABLE`, a different policy version, or an unmatched finding identity is `incomparable` — never "fixed".
+
+```bash
+reachgate fixcheck before.json after.json                 # text delta
+reachgate fixcheck before.json after.json --format json --output delta.json
+reachgate fixcheck before.json after.json --format markdown   # MR-comment ready
+```
+
+By default it writes nothing to the tracked proof artifacts; output goes to stdout unless `--output` is given. The `markdown` format renders an MR-comment-ready delta (before/after verdicts, status, fingerprints, and the reason). A clearly-labelled **synthetic demo fixture** under `tests/fixtures/fixcheck/` shows the `REACHABLE -> exhaustive NOT_REACHABLE = reachability_removed` workflow without a live dependency; real usage compares before/after receipts from actual runs.
 
 Open `docs/judge-proof.html` or regenerate it with `python tools/build_judge_proof.py`.
 
@@ -248,10 +270,10 @@ The agent executes real `query_graph` calls against Orbit, walks the graph, and 
 ## Tests
 
 ```bash
-pytest
+python -m pytest
 ```
 
-282 focused tests passing, covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, and the judge-proof page generator.
+422 focused tests passing (plus 5 marked `standalone` install-gate tests deselected by default), covering config loading, findings-file loading (GitLab SAST report + native JSON), policy engine verdicts (including UNKNOWN), rule triggers, glob matching, BFS path strategy and termination reporting, the ImportedSymbol fallback, import path resolution, receipt rendering (including the Mermaid path diagram and certificate block), fingerprint stability, fingerprint-idempotent MR comment upsert, the JSON artifact, the reachable/unreachable flip, the OpenVEX export (including the never-fake-green guard), the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (including `--output` handling and bundled proof data), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, optional Ed25519 capsule signing with tamper detection, regression-blame path overlap (no causation claim), the offline evidence explorer, adversarial `reachgate selftest`, derived fix-verification proof with markdown output, the machine-checkable Evidence Contract validator, the fake-green rejection demo fixtures, CI gate templates, and the judge-proof page generator. Run the standalone install gate separately with `python -m pytest -m standalone`.
 
 ## Orbit Notes
 
@@ -271,4 +293,4 @@ Building ReachGate surfaced Orbit behavior that is not in the docs:
 
 ## License
 
-MIT
+MIT. Copyright (c) 2026 Mohamed Azahrioui.

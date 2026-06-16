@@ -6,6 +6,53 @@ likely to ask. Standards-aligned, offline-verifiable, advisory by default.
 
 ---
 
+## Start here
+
+- **What it is.** ReachGate is an **offline-verifiable evidence layer** for vulnerability reachability: for each finding it walks the GitLab Orbit code graph from declared entry points to the vulnerable definition and emits an auditable receipt.
+- **Who decides.** The **deterministic engine decides** the verdict (`risk_score = sum of fixed rule weights`); the AI only explains the receipt.
+- **The quickest proof.** Run `reachgate selftest` — an adversarial invariant test that, in one command, shows real evidence is accepted, fake-green evidence is rejected, and `UNKNOWN` stays an evidence gap. When installed with the optional `sign` extra it also proves a tampered signature breaks; otherwise that leg is skipped honestly. It is a self-check, not a formal certification.
+- **The real captured proof.** [MR !2](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/2) and [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) — live Orbit runs with one REACHABLE and one exhaustive NOT_REACHABLE receipt, and a byte-identical idempotency rerun.
+- **What the claims mean.** `docs/EVIDENCE_CONTRACT.md` defines exactly which claims a receipt supports (and which it does not), all enforced by the offline verifier.
+- **The copy-paste path.** `docs/DEMO_COMMANDS.md` is the copy-pastable command list (it also notes the `python -m reachgate.cli ...` fallback when the entry point is not installed).
+
+### One command to prove the rules
+
+```bash
+reachgate selftest
+```
+
+It exits `0` only if every invariant held: must-pass evidence passed **and**
+must-fail (fake-green) evidence was rejected for the right reason. If a safety
+rule ever regressed, it exits non-zero and names the misbehaving check. It is an
+adversarial invariant test, not a formal certification.
+
+### What to run in a 2-minute demo
+
+```bash
+reachgate --help                                                       # the offline CLI surface
+reachgate selftest                                                     # the keystone: rules prove themselves (exit 0)
+reachgate verify                                                       # verify receipts + cross-check OpenVEX/SARIF (exit 0)
+reachgate contract-check docs/proof/mr2-reachgate-receipts.json        # real captured receipt -> PASS (exit 0)
+reachgate contract-check tests/fixtures/contract_violations/not-reachable-timeout-hit.json  # fake-green -> FAIL (exit 1)
+reachgate fixcheck \
+  tests/fixtures/fixcheck/before-reachable.json \
+  tests/fixtures/fixcheck/after-not-reachable-exhaustive.json \
+  --format markdown                                                    # verifies a fix from before/after receipts
+reachgate capsule build                                                # portable evidence capsule -- run LAST (see warning)
+```
+
+> **Recording warning.** `reachgate capsule build` may refresh the manifest's
+> `repo_commit_sha`, which can leave the working tree dirty. For a clean tree
+> while recording, run it **last**, or use an explicit output path if available.
+
+The real receipt passes because its `NOT_REACHABLE` search ran to completion
+(frontier exhausted, no bound hit, 0 API errors), **within the configured search
+bounds**; the fake-green fixture claims a safe `NOT_REACHABLE` while violating
+one of those preconditions, so `contract-check` exits non-zero. `UNKNOWN` is
+never treated as safe.
+
+---
+
 ## 60-second pitch
 
 Security scanners drown teams in findings. The hard question is never "is this
@@ -33,6 +80,8 @@ receipts. The deterministic engine decides; the AI only explains.
 1. **`docs/judge-proof.html`** — the visual case file. Open it in any browser, fully offline (no JS, no CDN). Each verdict is a live exhibit rendered from the captured receipts, with a "Portable evidence" section showing the four downstream evidence pillars.
 2. **`docs/JUDGE_REPLAY.md`** — the two-minute replay kit (offline check + live merge requests).
 3. **This file (`docs/JUDGE_PACK.md`)** — orientation and Q&A.
+4. **`docs/EVIDENCE_CONTRACT.md`** — the contract: exactly which claims a receipt supports (and which it does not), all enforced by the verifier.
+5. **`docs/DEMO_COMMANDS.md`** — copy-pastable demo commands, including the "try to fake green" PASS/FAIL contrast.
 
 ---
 
@@ -51,24 +100,76 @@ python tools/build_evidence_manifest.py
 python tools/build_judge_proof.py
 
 # 3. Full test suite
-pytest
+python -m pytest
 ```
 
 Or, with the installed CLI (`pip install -e ".[dev]"`), the same offline surface
 in one command set:
 
 ```bash
+reachgate selftest               # adversarial invariant test: the rules prove themselves
 reachgate verify                 # verify receipts + cross-check OpenVEX/SARIF
 reachgate coverage               # verdict / UNKNOWN-reason / blind-spot report
 reachgate coverage --format html --output coverage.html   # same, as static HTML
 reachgate policy explain         # the recorded policy, with honest provenance
+reachgate contract-check docs/proof/mr2-reachgate-receipts.json   # enforce the Evidence Contract (also a CI gate: templates/gitlab/reachgate-contract-check.yml)
+reachgate blame docs/proof/mr2-reachgate-receipts.json --changed-files <file>  # which changed files overlap a reachable path (overlap, never causation)
+reachgate explorer --output explorer.html   # self-contained offline evidence explorer (HTML)
 reachgate judge                  # one command: verify -> exports -> manifest -> proof
 reachgate capsule build          # portable evidence capsule -> dist/reachgate-evidence-capsule.zip
 ```
 
+`reachgate selftest` is the fastest "don't trust us, prove it" check: it runs
+the real `contract-check`/`verify` processes, plus the optional signing check
+when `reachgate[sign]` is installed, and asserts their exit codes. A must-fail
+leg that ever passed (a safety regression) makes it exit non-zero.
+`reachgate blame` reports only which **changed files overlap** a
+finding's reachable path — a deterministic set intersection, never a causation
+or "this change introduced the path" claim. `reachgate explorer` writes a
+single offline HTML page for browsing receipts/fixcheck/contract-check/blame
+results.
+
 `reachgate capsule build` produces a deterministic, gitignored zip with the
 receipts, OpenVEX, SARIF, evidence manifest, judge-proof HTML, this Judge Pack,
 and a `HOW_TO_VERIFY.txt` — a portable bundle a reviewer can verify offline.
+
+Optional (fix verification, offline): `reachgate fixcheck BEFORE AFTER`
+compares two receipt artifacts and proves whether reachability was removed,
+introduced, unchanged, or incomparable. ReachGate can compare two receipt
+artifacts and verify whether reachability was removed **only when the after
+receipt is exhaustive** (frontier exhausted, no bound hit, 0 API errors, same
+policy version); an after `UNKNOWN`, a non-exhaustive `NOT_REACHABLE`, or a
+policy-version change is `incomparable`, never "fixed". Demo idea: run it on the
+two captured idempotency-rerun receipts to show every finding is `unchanged`
+(no spurious fix or regression):
+
+```bash
+reachgate fixcheck docs/proof/mr2-reachgate-receipts.json \
+                   docs/proof/mr3-reachgate-receipts-rerun.json
+```
+
+### Fix verification demo
+
+Real usage compares before/after receipts produced by **actual** ReachGate
+runs (the same finding, scanned before and after a code fix). To show the
+workflow without a live dependency, the repo includes a **synthetic demo
+fixture** (clearly labelled, not a live captured proof) under
+`tests/fixtures/fixcheck/`: a `REACHABLE` before receipt and an **exhaustive**
+`NOT_REACHABLE` after receipt for the same finding under the same policy.
+
+```bash
+reachgate fixcheck \
+  tests/fixtures/fixcheck/before-reachable.json \
+  tests/fixtures/fixcheck/after-not-reachable-exhaustive.json \
+  --format markdown
+```
+
+It reports `reachability_removed` — **only** because the after verdict is an
+exhaustive `NOT_REACHABLE` under the same policy version. An after `UNKNOWN`, a
+non-exhaustive `NOT_REACHABLE`, or a different policy version is reported as
+`incomparable`, never as fixed or safe. The `--format markdown` output is
+MR-comment ready (before/after verdicts, status, fingerprints, and the reason),
+and `--output PATH` writes it anywhere without touching any tracked artifact.
 
 Expected: `verify_proof.py` (or `reachgate verify`) prints `ReachGate proof
 verified` and exits `0`; the test suite passes.

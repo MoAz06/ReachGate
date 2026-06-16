@@ -148,6 +148,72 @@ This exits non-zero only when a finding **became** `REACHABLE` (a new reachable
 finding, or a changed finding whose new verdict is `REACHABLE`). `UNKNOWN` and
 `NOT_REACHABLE` never count as reachable.
 
+## Contract-check gate
+
+The triage job above produces evidence. The **contract-check gate** enforces
+that the evidence is honest: it validates an existing `reachgate-receipts.json`
+against the machine-checkable [Evidence Contract](EVIDENCE_CONTRACT.md) and
+fails the pipeline if a receipt fake-greens or overclaims. It is **offline** —
+it does **not** call Orbit or GitLab; it only reads a receipt that already
+exists.
+
+Add it with the dedicated template at
+`templates/gitlab/reachgate-contract-check.yml`:
+
+```yaml
+# .gitlab-ci.yml
+include:
+  - local: templates/gitlab/reachgate-contract-check.yml
+```
+
+Or include it straight from this project:
+
+```yaml
+include:
+  - project: 'gitlab-ai-hackathon/transcend/39037247'
+    file: 'templates/gitlab/reachgate-contract-check.yml'
+    ref: main
+```
+
+**Point it at your receipt** with `REACHGATE_RECEIPTS_FILE` (default
+`reachgate-receipts.json`):
+
+```yaml
+  variables:
+    REACHGATE_RECEIPTS_FILE: "reachgate-receipts.json"
+```
+
+The receipt is the artifact produced by the advisory triage job (pass it
+between jobs via artifacts), or any receipt committed/uploaded by an earlier
+step. The gate runs `reachgate contract-check "$REACHGATE_RECEIPTS_FILE"`,
+writes a markdown report to `reachgate-contract-report.md`, and uploads it as a
+job artifact on every run (even on failure, so reviewers always get a record).
+
+**What passes and what fails:**
+
+- **Real, contract-conformant receipts pass** (exit 0): a `REACHABLE` with a
+  graph path, an *exhaustive* `NOT_REACHABLE` (frontier exhausted, no bound hit,
+  0 API errors), or an `UNKNOWN` that is honestly framed as an evidence gap.
+- **Fake-green / overclaiming receipts fail** (exit 1): a **non-exhaustive
+  `NOT_REACHABLE`** claimed as safe (a hop limit, node budget, timeout, or API
+  error in its certificate) is a contract FAIL — it must be `UNKNOWN`, never a
+  safe-within-bounds negative.
+- **`UNKNOWN` is review, not safe**: the contract never lets an `UNKNOWN` be
+  treated as a pass-as-safe verdict.
+- A missing or invalid receipt file exits `2` (the gate fails on bad input).
+
+**Advisory vs. strict mode.** The template is **advisory by default**
+(`allow_failure: true`): it reports overclaims and uploads the contract report,
+but never blocks a merge on its own. To make it a **strict gate** that blocks
+the merge when a receipt overclaims, set `allow_failure: false` (the template
+documents both modes inline).
+
+> **This gate does not call Orbit.** Unlike the triage job, it performs no scan
+> and no API call — it only checks receipts that already exist. As with the
+> triage template, the job runs the `reachgate` CLI, so ReachGate must be
+> installed/vendored in the job (the template's `before_script` shows one way;
+> see the portability note under Option C).
+
 ## After the run: verify offline
 
 The CI job is the live half. Anyone can verify the captured evidence offline,

@@ -154,14 +154,12 @@ def _regenerate_artifacts(root: Path) -> None:
     Loads the existing tools by file path (package-safe) and runs each one. The
     receipts themselves are never written. Raises CapsuleError on any failure.
     """
-    from .cli import _load_tool  # local import to avoid a cycle at module load
-
     try:
-        export_vex = _load_tool(root, "export_vex")
-        export_sarif = _load_tool(root, "export_sarif")
-        build_manifest = _load_tool(root, "build_evidence_manifest")
-        build_proof = _load_tool(root, "build_judge_proof")
-    except Exception as exc:  # _RepoUnavailable or import failure
+        from . import export_vex
+        from . import export_sarif
+        from . import build_evidence_manifest as build_manifest
+        from . import build_judge_proof as build_proof
+    except Exception as exc:  # import failure
         raise CapsuleError(f"could not load build tools: {exc}") from exc
 
     # VEX and SARIF first (the manifest hashes them), then the manifest, then

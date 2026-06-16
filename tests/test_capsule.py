@@ -89,19 +89,25 @@ def test_capsule_how_to_verify_is_honest(tmp_path):
 
 
 def test_capsule_regenerate_orchestration_no_side_effects(tmp_path, monkeypatch):
-    """The regenerate=True path runs the four generators. We stub _load_tool so
-    it never writes into tracked docs/ paths, and assert the orchestration."""
+    """The regenerate=True path runs the four generators. We stub each package
+    generator's main() so it never writes into tracked docs/ paths, and assert
+    the orchestration order."""
+    from src.reachgate import (
+        export_vex, export_sarif, build_evidence_manifest, build_judge_proof,
+    )
     calls = []
 
-    class _FakeTool:
-        def __init__(self, name):
-            self._name = name
-
-        def main(self, argv=None):
-            calls.append(self._name)
+    def _stub(name):
+        def _main(argv=None):
+            calls.append(name)
             return 0
+        return _main
 
-    monkeypatch.setattr(cli, "_load_tool", lambda root, name: _FakeTool(name))
+    monkeypatch.setattr(export_vex, "main", _stub("export_vex"))
+    monkeypatch.setattr(export_sarif, "main", _stub("export_sarif"))
+    monkeypatch.setattr(build_evidence_manifest, "main",
+                        _stub("build_evidence_manifest"))
+    monkeypatch.setattr(build_judge_proof, "main", _stub("build_judge_proof"))
     out = tmp_path / "cap.zip"
     capsule_mod.build_capsule(_repo_root(), out, regenerate=True)
     assert calls == [
@@ -137,18 +143,24 @@ def test_judge_runs_all_steps(capsys, monkeypatch):
     writing into tracked docs/proof or docs/judge-proof.html (the real tools
     write to default tracked paths). This keeps pytest side-effect-free.
     """
+    from src.reachgate import (
+        verify_proof, export_vex, export_sarif,
+        build_evidence_manifest, build_judge_proof,
+    )
     calls = []
 
-    class _FakeTool:
-        def __init__(self, name):
-            self._name = name
-
-        def main(self, argv=None):
-            calls.append(self._name)
+    def _stub(name):
+        def _main(argv=None):
+            calls.append(name)
             return 0
+        return _main
 
-    monkeypatch.setattr(cli, "_load_tool",
-                        lambda root, name: _FakeTool(name))
+    monkeypatch.setattr(verify_proof, "main", _stub("verify_proof"))
+    monkeypatch.setattr(export_vex, "main", _stub("export_vex"))
+    monkeypatch.setattr(export_sarif, "main", _stub("export_sarif"))
+    monkeypatch.setattr(build_evidence_manifest, "main",
+                        _stub("build_evidence_manifest"))
+    monkeypatch.setattr(build_judge_proof, "main", _stub("build_judge_proof"))
 
     rc = cli.main(["judge"])
     assert rc == 0

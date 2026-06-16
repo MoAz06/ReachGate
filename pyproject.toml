@@ -20,6 +20,12 @@ dev = [
     "pytest-asyncio>=0.23",
     "respx>=0.21",
 ]
+# Cryptographic signing of the evidence capsule (Ed25519 tamper-evidence).
+# Optional: the rest of ReachGate, including the sha256 evidence manifest, works
+# without it. See reachgate.signing.
+sign = [
+    "cryptography>=42",
+]
 
 [project.scripts]
 reachgate = "reachgate.cli:main"
@@ -30,6 +36,18 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# Ship a byte-identical copy of the read-only proof receipts so the offline
+# CLI (verify / coverage / exports) works after a bare `pip install`, with no
+# repo checkout. See reachgate._resources.
+reachgate = ["_data/proof/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# The standalone-install gate is slow (builds a venv + pip install) and is
+# excluded from the default run; opt in with `pytest -m standalone`.
+addopts = "-m 'not standalone'"
+markers = [
+    "standalone: out-of-checkout bare-install gate (slow; builds a venv)",
+]
