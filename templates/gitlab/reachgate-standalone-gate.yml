@@ -1,0 +1,52 @@
+# ReachGate standalone-install gate template.
+#
+# This runs the marked `standalone` test (tests/test_standalone_install.py): it
+# builds a fresh virtual environment, installs ReachGate NON-editably
+# (`pip install .`, never `-e`), and runs `reachgate verify / coverage /
+# contract-check / scan` from a directory OUTSIDE the checkout, against the
+# bundled package-data receipts. It is the automated proof that "works after a
+# bare pip install" stays true -- so that claim cannot silently rot.
+#
+# It is kept OUT of the default test run (pyproject `addopts = -m 'not
+# standalone'`) because it is slow (it builds a venv). This template opts back
+# in, in its own job, on demand.
+#
+# ---------------------------------------------------------------------------
+# Usage in your .gitlab-ci.yml (opt-in; this template does NOT modify your root
+# pipeline -- you include it yourself):
+#
+#   include:
+#     - local: templates/gitlab/reachgate-standalone-gate.yml
+#
+#   # or, from this project:
+#   include:
+#     - project: 'gitlab-ai-hackathon/transcend/39037247'
+#       file: 'templates/gitlab/reachgate-standalone-gate.yml'
+#       ref: main
+# ---------------------------------------------------------------------------
+
+stages:
+  - standalone-gate
+
+reachgate-standalone-gate:
+  stage: standalone-gate
+  image: python:3.11
+  variables:
+    # The marked test builds its own venv and pip-installs ReachGate; pip's
+    # build isolation fetches the build backend, so the job needs network.
+    PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  before_script:
+    # Test runner + the engine's runtime deps (the standalone test reuses them
+    # via --system-site-packages so the inner install is --no-deps).
+    - pip install --quiet pytest respx httpx pyyaml
+  script:
+    # Run ONLY the standalone gate. It is self-contained: it creates a clean
+    # venv, installs reachgate non-editably, and asserts the offline CLI works
+    # from outside the checkout on the bundled receipts (verify / coverage /
+    # contract-check exit 0, scan exits 2 with a clean message).
+    - pytest -m standalone -v
+  # ---------------------------------------------------------------------------
+  # By default the gate ENFORCES (a broken standalone install fails the
+  # pipeline). To make it advisory while you adopt it, set:
+  #   allow_failure: true
+  # ---------------------------------------------------------------------------
