@@ -64,7 +64,7 @@ reachgate verify                 # verify receipts + cross-check OpenVEX/SARIF
 reachgate coverage               # verdict / UNKNOWN-reason / blind-spot report
 reachgate coverage --format html --output coverage.html   # same, as static HTML
 reachgate policy explain         # the recorded policy, with honest provenance
-reachgate contract-check docs/proof/mr2-reachgate-receipts.json   # enforce the Evidence Contract
+reachgate contract-check docs/proof/mr2-reachgate-receipts.json   # enforce the Evidence Contract (also a CI gate: templates/gitlab/reachgate-contract-check.yml)
 reachgate judge                  # one command: verify -> exports -> manifest -> proof
 reachgate capsule build          # portable evidence capsule -> dist/reachgate-evidence-capsule.zip
 ```

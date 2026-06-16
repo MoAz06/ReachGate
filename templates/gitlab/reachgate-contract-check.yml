@@ -1,0 +1,102 @@
+# ReachGate contract-check gate template.
+#
+# This is the OFFLINE evidence gate. It does NOT scan, and it does NOT call the
+# GitLab or Orbit API. It only validates an EXISTING ReachGate receipt artifact
+# against the machine-checkable Evidence Contract (docs/EVIDENCE_CONTRACT.md):
+#
+#   * REACHABLE is exploitable context, never treated as safe.
+#   * NOT_REACHABLE is "safe within configured bounds" ONLY when its certificate
+#     is exhaustive (frontier exhausted, no bound hit, 0 API errors). A
+#     non-exhaustive NOT_REACHABLE is a contract FAIL: it overclaims a negative
+#     the search did not earn.
+#   * UNKNOWN is always an evidence gap — review, never pass-as-safe.
+#
+# In other words: this gate fails the pipeline if a receipt fake-greens or
+# otherwise overclaims its evidence. Real, contract-conformant receipts pass.
+#
+# ---------------------------------------------------------------------------
+# Usage in your .gitlab-ci.yml:
+#
+#   include:
+#     - local: templates/gitlab/reachgate-contract-check.yml
+#
+#   # or, from this project:
+#   include:
+#     - project: 'gitlab-ai-hackathon/transcend/39037247'
+#       file: 'templates/gitlab/reachgate-contract-check.yml'
+#       ref: main
+#
+# ---------------------------------------------------------------------------
+# Where does the receipt come from?
+#
+# This gate validates a receipt that ALREADY EXISTS. Typically that is the
+# `reachgate-receipts.json` produced by the advisory triage job in
+# `templates/gitlab/reachgate.yml`, passed between jobs via artifacts, or a
+# receipt committed/uploaded by an earlier step. Point the gate at it with:
+#
+#   REACHGATE_RECEIPTS_FILE  (default: reachgate-receipts.json)
+#
+# ---------------------------------------------------------------------------
+# IMPORTANT — this template needs ReachGate's tooling in the running repo.
+#
+# `include` pulls only the YAML. The job still runs `reachgate contract-check`,
+# which is the ReachGate package CLI. A bare `include` does NOT make ReachGate
+# appear in your job. Make ReachGate available, one of:
+#
+#   * Vendor it:  copy ReachGate's `src/reachgate/` (+ `pyproject.toml`) into
+#     your repo and `pip install -e .` in before_script.
+#   * Install it: `pip install` ReachGate from a Git URL or internal index, then
+#     `reachgate contract-check` resolves on PATH.
+#   * Fork/submodule: run the job from a checkout that already contains
+#     ReachGate.
+#
+# This is an honest requirement, not a "fully standalone" claim: the gate logic
+# lives in the ReachGate package, so the package must be installed in the job.
+# The before_script below installs it from THIS project as a concrete example;
+# adapt the source to wherever you vendor or host ReachGate.
+# ---------------------------------------------------------------------------
+
+stages:
+  - security-gate
+
+reachgate-contract-check:
+  stage: security-gate
+  image: python:3.11-slim
+  variables:
+    # The receipt artifact to validate. Override in your pipeline if your
+    # receipt is named or located differently.
+    REACHGATE_RECEIPTS_FILE: "reachgate-receipts.json"
+  before_script:
+    # Make the `reachgate` CLI available. This example installs ReachGate from
+    # this project; replace with your vendored/hosted source as described above.
+    - pip install --quiet "git+https://gitlab.com/gitlab-ai-hackathon/transcend/39037247.git@main"
+  script:
+    # No scan, no Orbit/GitLab API call: this only reads an existing receipt.
+    # Exit code is honored as the gate result:
+    #   * contract PASS or WARN -> exit 0 (gate passes)
+    #   * contract FAIL (overclaim / fake-green) -> exit 1 (gate fails)
+    #   * missing / invalid receipt file -> exit 2 (gate fails: bad input)
+    # The markdown report is always written, even on failure, so reviewers get
+    # an auditable record either way.
+    - reachgate contract-check "$REACHGATE_RECEIPTS_FILE" --format markdown --output reachgate-contract-report.md
+    # Re-run in text mode for a human-readable job log (and to set the exit code
+    # that gates the pipeline). The report file above is byte-stable evidence.
+    - reachgate contract-check "$REACHGATE_RECEIPTS_FILE"
+  artifacts:
+    paths:
+      - reachgate-contract-report.md
+    when: always
+    expire_in: 30 days
+  # ---------------------------------------------------------------------------
+  # ADVISORY mode (default): the gate reports overclaiming receipts but never
+  # blocks a merge on its own. Reviewers still get the contract report artifact.
+  allow_failure: true
+  # ---------------------------------------------------------------------------
+  # STRICT gate mode: to BLOCK the merge when a receipt overclaims / fake-greens,
+  # set allow_failure to false (comment out the line above and use this instead):
+  #
+  #   allow_failure: false
+  #
+  # In strict mode, a contract FAIL (e.g. a non-exhaustive NOT_REACHABLE claimed
+  # as safe-within-bounds, or an UNKNOWN dressed up as safe) fails the pipeline.
+  # ---------------------------------------------------------------------------

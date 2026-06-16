@@ -73,5 +73,13 @@ non-zero. An overclaiming negative cannot pass a gate unnoticed.
   `NOT_REACHABLE` is safe only within the configured search bounds, and only
   when the search was exhaustive.
 
+## As a CI gate
+
+The same `contract-check` runs in CI as an offline gate (no Orbit/API call):
+the template at `templates/gitlab/reachgate-contract-check.yml` validates an
+existing `reachgate-receipts.json` and fails the pipeline when a receipt
+fake-greens. It is advisory by default (`allow_failure: true`) and can be made
+strict. See [GitLab CI Setup → Contract-check gate](GITLAB_CI_SETUP.md#contract-check-gate).
+
 See the [Evidence Contract](EVIDENCE_CONTRACT.md) for exactly which claims a
 receipt supports, and the [Judge Pack](JUDGE_PACK.md) for the full walkthrough.
