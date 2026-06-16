@@ -9,6 +9,30 @@ Harde jury-focus:
 - Potential Impact: scanner triage noise is real; reachability helps teams prioritize what matters.
 - Quality of the Idea: Orbit is used as an evidence graph for security reachability, not as a wrapper around an LLM opinion.
 
+## Recommended final recording flow
+
+This is the recommended ~2-minute order for the final recording. It leads with
+the evidence story (the part that is strongest and most current). The full
+3-minute table and the backup version below are still valid; this is the
+preferred running order, not a replacement.
+
+Use `docs/DEMO_COMMANDS.md` as the copy-paste command sheet while recording.
+
+1. **Problem (~0:00-0:15).** Scanners flood teams with alerts and ask you to *trust* a verdict. The real question in a merge request is: can this vulnerable code actually be reached from the application's entry points?
+2. **SAST flip (~0:15-0:55).** Show a real code-reachability split on findings that have a code location: one finding is `REACHABLE` with a concrete graph path (entry point → vulnerable definition), the other is an exhaustive `NOT_REACHABLE` **within the configured search bounds**. Same graph, opposite triage. (This is the main act — the live flip is generated against live Orbit and **needs a `GITLAB_TOKEN`**; e.g. `python tools/demo_e2e.py`.)
+3. **Fake-green rejection (~0:55-1:20).** Show that overclaiming evidence is refused:
+   - `reachgate selftest` — an adversarial invariant test (not a formal certification): must-pass evidence passes and must-fail/fake-green evidence is rejected for the right reason; if a safety rule ever regressed it exits non-zero, **or**
+   - `reachgate contract-check tests/fixtures/contract_violations/not-reachable-timeout-hit.json` — a synthetic receipt that claims a safe `NOT_REACHABLE` while its search timed out → FAIL, exit 1.
+4. **UNKNOWN honesty (~1:20-1:40).** Dependency/SCA findings without a code anchor (e.g. container/kernel CVEs) become a typed `UNKNOWN` / needs-review with a next action — never a fake safe verdict. `UNKNOWN` is never treated as safe; it is the mechanism that stops ReachGate from lying when there is no code to walk to.
+5. **Offline verification (~1:40-1:55).** `reachgate verify` replays the captured receipts and cross-checks OpenVEX/SARIF **with no token and no network** — a judge can verify the flip offline, even though *generating* the live flip needs a token.
+6. **Closing line (~1:55-2:00).** "Most scanners output findings. ReachGate outputs evidence with a contract."
+
+Notes for this flow:
+
+- **Live flip vs. offline proof:** generating the flip needs a token / live Orbit; verifying the captured proof does not. Keep that distinction explicit on screen.
+- **The MR !3 idempotency demo is still useful** (reviewers get durable evidence without duplicate comment spam) but it is **no longer the main act** — show it only if time remains, after the evidence story above.
+- `blame` (if shown) reports only which changed files **overlap** a reachable path — never a causation or "this change introduced the path" claim. `fixcheck` (if shown) *verifies a fix from before/after receipts*; it does not modify code.
+
 ## Harde Review Van Het Oude Script
 
 Het oude script was technisch sterk, maar niet maximaal jurygericht.
@@ -30,7 +54,7 @@ Most security tools stop at "this vulnerability exists"; ReachGate answers the q
 |---|---|---|---|---|
 | 0:00-0:15 | README title/tagline or Devpost title | Most security tools stop at "this vulnerability exists." ReachGate answers the question reviewers actually need in a merge request: can this vulnerable code be reached from the application's entry points? | Potential Impact, Quality of Idea | Do not say it proves all security risk. |
 | 0:15-0:32 | README "What it does", CI section, or `reachgate.yml` entrypoints | For real projects, the CI job can load GitLab SAST or native JSON findings. You declare the attack surface in `reachgate.yml`, then ReachGate walks Orbit's files, definitions, imports and calls from those entry points to the vulnerable definition. | Technological Implementation, Design and Usability | Do not say ReachGate guesses entry points. |
-| 0:32-0:45 | README architecture or tests line | The key design choice is that the model never decides the verdict. The engine is deterministic: fixed rules, bounded graph search, 355 focused tests, and a receipt explaining the result. | Technological Implementation, Quality of Idea | Do not call the score model confidence. |
+| 0:32-0:45 | README architecture or tests line | The key design choice is that the model never decides the verdict. The engine is deterministic: fixed rules, bounded graph search, 422 focused tests at the time of recording (pytest remains the source of truth), and a receipt explaining the result. | Technological Implementation, Quality of Idea | Do not call the score model confidence. |
 | 0:45-0:55 | `/reachgate` skill + `agent/system_prompt.md` + Orbit MCP config | ReachGate also runs as a `/reachgate` skill through Orbit MCP. Same deterministic workflow; the agent executes, not decides. | Technological Implementation, Quality of Idea | Do not say the agent decided the verdict. Do not mention work item #3 unless its run log or recording is on screen; work item #5 is the CI/action-flow item, not agentic. |
 | 0:55-1:20 | MR !3 reachable receipt with graph path visible | Back in CI, here is the live MR proof. The SSRF finding is `REACHABLE` because Orbit found a graph path from `content/frontend/404/archives_redirect.js` to `getArchivesVersions`. That path triggers fixed rule weights: path exists, direct import, high severity. | Technological Implementation, Design and Usability | Do not say "the AI found this." |
 | 1:20-1:30 | MR !3 reachable certificate opened | The certificate shows policy version, search bounds, evidence mode, and whether any bound cut the search short. | Technological Implementation, Design and Usability | Do not read every field slowly. |
@@ -72,7 +96,7 @@ Optional if time remains:
 1. MR !2 as older phase-1 proof.
 2. JSON artifact opened in a viewer.
 3. Devpost draft links section.
-4. 355 focused tests line from README.
+4. 422 focused tests at the time of recording (pytest remains the source of truth) line from README.
 
 Cut first if too long:
 
