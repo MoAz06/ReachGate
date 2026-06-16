@@ -7,8 +7,9 @@ Schema**.
 
 The verdict is a graph fact, not a model judgment: a path from a declared entry
 point to the vulnerable definition either exists in Orbit or it does not. The
-deterministic reference implementation lives in `src/reachgate/` with 355 focused tests;
-this agent runs the same workflow on the platform.
+deterministic reference implementation lives in `src/reachgate/` with 422 focused
+tests at the time of recording (pytest remains the source of truth); this agent
+runs the same workflow on the platform.
 
 ---
 

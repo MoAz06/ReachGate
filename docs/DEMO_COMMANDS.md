@@ -9,7 +9,7 @@ pip install -e ".[dev]"
 
 Everything below is **offline**: no GitLab token, no Orbit, no network. The full
 test suite is **422 tests** (plus 5 `standalone` install-gate tests that are
-deselected by default; opt in with `pytest -m standalone`).
+deselected by default; opt in with `python -m pytest -m standalone`).
 
 ## The two-minute walkthrough
 
@@ -18,9 +18,10 @@ deselected by default; opt in with `pytest -m standalone`).
 reachgate --help
 
 # 2. THE KEYSTONE -- the rules prove themselves (exits 0). An adversarial
-#    invariant test: real evidence is accepted, fake-green is rejected, a
-#    tampered signature breaks, and UNKNOWN stays an evidence gap. If a safety
-#    rule ever regressed, it exits non-zero. (A self-check, not a certification.)
+#    invariant test: real evidence is accepted, fake-green is rejected, and
+#    UNKNOWN stays an evidence gap. With reachgate[sign] installed, the
+#    signature/tamper leg also runs; otherwise it is skipped honestly. If a
+#    safety rule ever regressed, it exits non-zero. (A self-check, not a certification.)
 reachgate selftest
 
 # 3. Verify the captured receipts + cross-check OpenVEX/SARIF (exits 0)

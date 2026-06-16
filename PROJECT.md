@@ -492,9 +492,9 @@ The published agent in the GitLab AI Catalog (`AI > Agents > ReachGate`) has:
 
 ## 9. Test coverage
 
-**422 tests, all green** (incl. GitLab SAST/native findings input, fingerprint-idempotent MR comment upsert, ImportedSymbol fallback, import resolution, Mermaid receipt rendering, UNKNOWN verdict, certificate and fingerprint stability, verdict→action routing, doctor and MR-triage error handling, OpenVEX export incl. the never-fake-green guard, the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (incl. `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, the Ed25519 capsule signing with tamper detection, the regression-blame path overlap (no causation claim), the offline evidence explorer, the adversarial self-proof (`reachgate selftest`: an invariant regression test that returns non-zero if a FAIL leg unexpectedly passes), derived fix-verification proof with markdown output, the machine-checkable Evidence Contract validator, the fake-green rejection demo fixtures, the CI gate templates (contract-check + standalone), and the judge-proof generator). Plus 5 marked `standalone` tests that verify a real bare `pip install` in a clean venv outside the checkout (deselected by default; run with `pytest -m standalone`). Run with:
+**422 tests, all green** (incl. GitLab SAST/native findings input, fingerprint-idempotent MR comment upsert, ImportedSymbol fallback, import resolution, Mermaid receipt rendering, UNKNOWN verdict, certificate and fingerprint stability, verdict→action routing, doctor and MR-triage error handling, OpenVEX export incl. the never-fake-green guard, the SARIF 2.1.0 export (codeFlow, typed UNKNOWN, byte-stable output), the evidence manifest, the package-safe `reachgate` CLI (incl. `--output` handling), the coverage/blind-spot report (text/json/html), the deterministic evidence capsule, the Ed25519 capsule signing with tamper detection, the regression-blame path overlap (no causation claim), the offline evidence explorer, the adversarial self-proof (`reachgate selftest`: an invariant regression test that returns non-zero if a FAIL leg unexpectedly passes), derived fix-verification proof with markdown output, the machine-checkable Evidence Contract validator, the fake-green rejection demo fixtures, the CI gate templates (contract-check + standalone), and the judge-proof generator). Plus 5 marked `standalone` tests that verify a real bare `pip install` in a clean venv outside the checkout (deselected by default; run with `python -m pytest -m standalone`). Run with:
 ```bash
-pytest
+python -m pytest
 ```
 
 | Test file | What it tests |
@@ -571,8 +571,8 @@ ReachGate is only as good as its `reachgate.yml`. An incomplete declaration of e
 - [x] **Phase 2 MR idempotency proven live** (11 June) - MR !3: run 1 `created`, rerun `unchanged`, comment count 2 -> 2, artifact re-uploaded, issue count 6 -> 6.
 - [x] **Phase 2 proof assets saved** - screenshots in `docs/img/mr3-*.png`, artifact snapshot in `docs/proof/mr3-reachgate-receipts-rerun.json`.
 - [x] **Agentic E2E working** (11 June) - Orbit MCP in VS Code + skill + agent, see section 10.
-- [x] **GitHub repo updated** - `origin/main` and `gitlab/main` synced.
-- [ ] **Record demo video** (<= 3 minutes) - current `SCRIPT.md`: open with the problem + Orbit as graph evidence, make MR !3 the main demo (REACHABLE/NOT_REACHABLE receipts, certificates, idempotent rerun, artifact), show agentic mode only as a short `/reachgate`/Orbit MCP flash, close with the proof gallery + offline verifier.
+- [x] **Feature branch synced** - `origin/ambitious/fix-verification` and `gitlab/ambitious/fix-verification` point at the same submission-ready work. Before final submission, either merge this branch into `main` or make the submitted branch explicit.
+- [ ] **Record demo video** (<= 3 minutes) - current `SCRIPT.md`: lead with the problem, show the SAST flip (REACHABLE path + exhaustive NOT_REACHABLE within bounds), show `reachgate selftest` / fake-green rejection, mention UNKNOWN honesty, then close with offline verification. MR !3 idempotency remains useful if time remains, but is no longer the main act.
 - [ ] **Finish Devpost submission** - text from `docs/DEVPOST.md`, fill in the real video URL, then submit at https://gitlab-transcend.devpost.com/.
 
 ### Private pre-submit cleanup
@@ -620,7 +620,7 @@ python -m reachgate.agent
 ### Tests
 
 ```bash
-pytest
+python -m pytest
 ```
 
 ### Diagnostics (extra output about import resolution)

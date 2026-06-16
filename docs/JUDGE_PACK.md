@@ -10,7 +10,7 @@ likely to ask. Standards-aligned, offline-verifiable, advisory by default.
 
 - **What it is.** ReachGate is an **offline-verifiable evidence layer** for vulnerability reachability: for each finding it walks the GitLab Orbit code graph from declared entry points to the vulnerable definition and emits an auditable receipt.
 - **Who decides.** The **deterministic engine decides** the verdict (`risk_score = sum of fixed rule weights`); the AI only explains the receipt.
-- **The quickest proof.** Run `reachgate selftest` — an adversarial invariant test that, in one command, shows real evidence is accepted, fake-green evidence is rejected, a tampered signature breaks, and `UNKNOWN` stays an evidence gap. It is a self-check, not a formal certification.
+- **The quickest proof.** Run `reachgate selftest` — an adversarial invariant test that, in one command, shows real evidence is accepted, fake-green evidence is rejected, and `UNKNOWN` stays an evidence gap. When installed with the optional `sign` extra it also proves a tampered signature breaks; otherwise that leg is skipped honestly. It is a self-check, not a formal certification.
 - **The real captured proof.** [MR !2](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/2) and [MR !3](https://gitlab.com/gitlab-ai-hackathon/transcend/39037247/-/merge_requests/3) — live Orbit runs with one REACHABLE and one exhaustive NOT_REACHABLE receipt, and a byte-identical idempotency rerun.
 - **What the claims mean.** `docs/EVIDENCE_CONTRACT.md` defines exactly which claims a receipt supports (and which it does not), all enforced by the offline verifier.
 - **The copy-paste path.** `docs/DEMO_COMMANDS.md` is the copy-pastable command list (it also notes the `python -m reachgate.cli ...` fallback when the entry point is not installed).
@@ -100,7 +100,7 @@ python tools/build_evidence_manifest.py
 python tools/build_judge_proof.py
 
 # 3. Full test suite
-pytest
+python -m pytest
 ```
 
 Or, with the installed CLI (`pip install -e ".[dev]"`), the same offline surface
@@ -120,9 +120,10 @@ reachgate capsule build          # portable evidence capsule -> dist/reachgate-e
 ```
 
 `reachgate selftest` is the fastest "don't trust us, prove it" check: it runs
-the real `contract-check`/`verify`/signing processes and asserts their exit
-codes, so a must-fail leg that ever passed (a safety regression) makes it exit
-non-zero. `reachgate blame` reports only which **changed files overlap** a
+the real `contract-check`/`verify` processes, plus the optional signing check
+when `reachgate[sign]` is installed, and asserts their exit codes. A must-fail
+leg that ever passed (a safety regression) makes it exit non-zero.
+`reachgate blame` reports only which **changed files overlap** a
 finding's reachable path — a deterministic set intersection, never a causation
 or "this change introduced the path" claim. `reachgate explorer` writes a
 single offline HTML page for browsing receipts/fixcheck/contract-check/blame
