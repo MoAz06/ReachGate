@@ -525,6 +525,15 @@ def cmd_contract_check(args) -> int:
     return 1 if overall_fail else 0
 
 
+def cmd_selftest(args) -> int:
+    """Adversarial self-proof of the safety invariants (exit non-zero on breach)."""
+    from . import selftest
+    argv: list[str] = ["--format", args.format]
+    if args.output:
+        argv += ["--output", args.output]
+    return int(selftest.main(argv))
+
+
 def cmd_explorer(args) -> int:
     """Generate a self-contained, offline evidence explorer HTML page."""
     from . import explorer
@@ -704,6 +713,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write to a file instead of stdout (writes no tracked artifact by default).",
     )
     p_cc.set_defaults(func=cmd_contract_check)
+
+    p_self = sub.add_parser(
+        "selftest",
+        help="Adversarial self-proof: reproduce the safety invariants offline "
+             "(exits non-zero if any invariant is violated).")
+    p_self.add_argument("--format", choices=("text", "json"), default="text",
+                        help="output format (default: text).")
+    p_self.add_argument("--output", default=None,
+                        help="write the report to a file instead of stdout.")
+    p_self.set_defaults(func=cmd_selftest)
 
     p_expl = sub.add_parser(
         "explorer",
